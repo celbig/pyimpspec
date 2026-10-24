@@ -27,6 +27,7 @@ from pyimpspec.data import DataSet
 from .base import Connection
 from .circuit import Circuit
 from .parser import Parser
+from .zview import parse_mdl
 from pyimpspec.typing import (
     ComplexImpedances,
     Frequencies,

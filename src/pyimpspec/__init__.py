@@ -26,6 +26,7 @@ from pyimpspec.data import (
 )
 from pyimpspec.circuit import (
     parse_cdc,
+    parse_mdl,
     simulate_spectrum,
 )
 from pyimpspec.circuit.base import (
