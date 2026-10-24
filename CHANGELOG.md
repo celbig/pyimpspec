@@ -1,3 +1,10 @@
+# 5.2.1 (unreleased)
+
+- Fixed a bug in the impedance calculation of the de Levie element (`Ls`, `DeLevieFiniteLength`), which used `d*sqrt(R_i*R_r)` instead of `d*sqrt(R_i/R_r)` in the argument of the hyperbolic cotangent, contrary to the documented equation.
+  - **The results of circuits containing `Ls` change** (simulations, fits, etc.) whenever `R_r` is not equal to 1.
+  - Values of `d` obtained with previous versions correspond to `d*R_r` in the corrected model (the other parameters are unaffected).
+
+
 # 5.2.0 (2026/09/24)
 
 - Added support for `.crv` files from OrigaLys.
