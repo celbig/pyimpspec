@@ -1,3 +1,9 @@
+# Unreleased
+
+- Added `pyimpspec.mpl.plot_subcircuits` for plotting the contribution of each component of a circuit's top-level series connection in a Nyquist plot.
+- Added the `subcircuits` and `subcircuit_offset` parameters to `pyimpspec.mpl.plot_fit`.
+
+
 # 5.2.0 (2026/09/24)
 
 - Added support for `.crv` files from OrigaLys.

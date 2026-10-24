@@ -22,7 +22,7 @@ Primitives
 These functions are used by the wrapper functions to make a more complex figure with multiple subplots.
 
 .. automodule:: pyimpspec.mpl
-   :members: plot_bht_scores, plot_bode, plot_real_imaginary, plot_gamma, plot_imaginary, plot_magnitude, plot_pseudo_chisqr, plot_num_RC_suggestion, plot_num_RC_suggestion_method, plot_nyquist, plot_phase, plot_real, plot_residuals
+   :members: plot_bht_scores, plot_bode, plot_real_imaginary, plot_gamma, plot_imaginary, plot_magnitude, plot_pseudo_chisqr, plot_num_RC_suggestion, plot_num_RC_suggestion_method, plot_nyquist, plot_phase, plot_real, plot_residuals, plot_subcircuits
 
 
 Examples
@@ -154,6 +154,45 @@ plot_drt
 
   figure, axes = mpl.plot_residuals(drt)
   figure.tight_layout()
+  mpl.show()
+
+.. raw:: latex
+
+    \clearpage
+
+
+plot_subcircuits
+~~~~~~~~~~~~~~~~
+:func:`~pyimpspec.mpl.plot_subcircuits`
+
+Plots the contribution of each component of a circuit's top-level series connection (e.g., ``R``, ``(RC)``, and ``(RW)`` for ``R(RC)(RW)``) to check the physical plausibility of a fit.
+The same contributions can be added to the Nyquist plot of :func:`~pyimpspec.mpl.plot_fit` by passing ``subcircuits=True``.
+
+.. plot::
+
+  import pyimpspec
+  from pyimpspec import mpl
+
+  data = pyimpspec.generate_mock_data("CIRCUIT_1", noise=5e-2, seed=42)[0]
+  circuit = pyimpspec.parse_cdc("R(RC)(RW)")
+  fit = pyimpspec.fit_circuit(circuit, data=data)
+
+  # Exact contributions, each starting from the origin
+  figure, axes = mpl.plot_subcircuits(fit)
+  mpl.show()
+
+  # Series resistance added to each of the other contributions
+  figure, axes = mpl.plot_nyquist(data)
+  _ = mpl.plot_nyquist(fit, line=True, figure=figure, axes=axes)
+  _ = mpl.plot_subcircuits(
+    fit,
+    offset="series_resistance",
+    figure=figure,
+    axes=axes,
+  )
+  mpl.show()
+
+  figure, axes = mpl.plot_fit(fit, data, subcircuits=True)
   mpl.show()
 
 .. raw:: latex

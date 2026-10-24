@@ -38,6 +38,7 @@ from .nyquist import plot_nyquist
 from .phase import plot_phase
 from .real import plot_real
 from .residuals import plot_residuals
+from .subcircuits import plot_subcircuits
 
 
 def show(*args, **kwargs):

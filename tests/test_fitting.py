@@ -43,8 +43,11 @@ from pyimpspec import (
     generate_fit_identifiers,
     parse_cdc,
     parse_data,
+    perform_kramers_kronig_test,
 )
 from pyimpspec.analysis.fitting import validate_circuit
+from pyimpspec.circuit.base import _calculate_impedances
+from pyimpspec.plot.mpl.subcircuits import _get_series_components
 from pyimpspec.typing import (
     ComplexImpedance,
     ComplexImpedances,
@@ -555,3 +558,73 @@ class Fitting(TestCase):
         self.assertLess(R4.get_value("R"), R3.get_value("R"))
         self.assertLess(Q1.get_value("Y"), Q2.get_value("Y"))
         self.assertLess(Q2.get_value("Y"), Q3.get_value("Y"))
+
+
+class SubcircuitContributions(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.result: FitResult = fit_circuit(parse_cdc("R(RC)(RW)"), data=DATA)
+        cls.frequencies: Frequencies = cls.result.get_frequencies()
+
+    def get_axis_artists(self, axis) -> int:
+        return len(axis.lines) + len(axis.collections)
+
+    def test_components(self):
+        components = _get_series_components(self.result.circuit)
+        self.assertEqual(
+            [label for label, _ in components],
+            ["R_1", "(R_2C_1)", "(R_3W_1)"],
+        )
+
+    def test_sum_of_contributions(self):
+        Z: ComplexImpedances = sum(
+            _calculate_impedances(item, self.frequencies)
+            for _, item in _get_series_components(self.result.circuit)
+        )
+        self.assertTrue(allclose(Z, self.result.circuit.get_impedances(self.frequencies)))
+
+    def test_plot_fit_result(self):
+        figure, axes = mpl.plot_subcircuits(self.result)
+        self.assertEqual(self.get_axis_artists(axes[0]), 3)
+        check_mpl_return_values(self, figure, axes)
+
+    def test_plot_circuit(self):
+        check_mpl_return_values(
+            self,
+            *mpl.plot_subcircuits(self.result.circuit, frequencies=self.frequencies),
+        )
+        with self.assertRaises(ValueError):
+            mpl.plot_subcircuits(self.result.circuit)
+
+    def test_series_resistance_offset(self):
+        figure, axes = mpl.plot_subcircuits(self.result, offset="series_resistance")
+        self.assertEqual(self.get_axis_artists(axes[0]), 2)
+        Rs: float = self.result.circuit.get_elements()[0].get_value("R")
+        for line in axes[0].lines:
+            self.assertGreaterEqual(min(line.get_xdata()), Rs - 1e-6)
+        check_mpl_return_values(self, figure, axes)
+
+    def test_invalid_arguments(self):
+        with self.assertRaises(ValueError):
+            mpl.plot_subcircuits(self.result, offset="invalid")
+        with self.assertRaises(TypeError):
+            mpl.plot_subcircuits(DATA)
+
+    def test_plot_fit(self):
+        check_mpl_return_values(
+            self,
+            *mpl.plot_fit(self.result, data=DATA, subcircuits=True),
+        )
+        check_mpl_return_values(
+            self,
+            *mpl.plot_fit(
+                self.result,
+                data=DATA,
+                subcircuits=True,
+                subcircuit_offset="series_resistance",
+            ),
+        )
+        with self.assertRaises(ValueError):
+            mpl.plot_fit(self.result, data=DATA, subcircuits=True, admittance=True)
+        with self.assertRaises(TypeError):
+            mpl.plot_fit(perform_kramers_kronig_test(DATA, num_RC=5, num_F_ext_evaluations=0), data=DATA, subcircuits=True)
