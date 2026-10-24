@@ -1,3 +1,8 @@
+# Unreleased
+
+- Added the `parse_mdl` function for importing equivalent circuits from ZView `.mdl` files.
+
+
 # 5.2.0 (2026/09/24)
 
 - Added support for `.crv` files from OrigaLys.

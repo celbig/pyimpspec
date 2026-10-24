@@ -91,6 +91,21 @@ It is also possible to obtain a SymPy_ expression for the impedance of a circuit
    drawing = circuit.to_drawing(running=True)
    drawing.draw()
 
+Circuits that were created in ZView can be imported from ``.mdl`` files using the :func:`~pyimpspec.parse_mdl` function.
+The names of the elements in ZView are used as labels, and the values and fixed/free status of the parameters are retained.
+Some ZView elements are defined differently than the corresponding elements in pyimpspec (e.g., the QPE, Ws, Wo, and Ls elements), in which case the parameter values are converted so that the impedance remains the same.
+
+.. code:: python
+
+   from pyimpspec import Circuit, parse_mdl
+
+   circuit: Circuit = parse_mdl("model.mdl")
+
+.. note::
+
+   The following ZView elements are supported: R, C, L, CPE, QPE, GE, Ws, Wo, Ls, and Lo (only if Phi = 1, in which case it is converted to a Gerischer element).
+   Distributed elements (DE and DX), element followers, multipliers, and the frequency range elements are not supported.
+
 .. raw:: latex
 
     \clearpage

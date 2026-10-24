@@ -1,0 +1,140 @@
+ZView Circuit Model:          2.0
+  IOPT:                       0
+  DINP:                       1
+  DFIT:                       1
+  PINP:                       4
+  PFIT:                       4
+  FREEQ:                      1
+  NEG:                        1
+  FUN:                        99
+  DATATYPE:                   0
+  IPAR:                       0
+  IFP:                        0
+  IRE:                        0
+  CELCAP:                     0
+  ROE:                        0
+  ATEMP:                      293
+  M:                          0
+  N:                          34
+  MAXFEV:                     100
+  NPRINT:                     9
+  IRCH:                       -3
+  MODE:                       0
+  ICP:                        0
+  IPRINT:                     1
+  IGACC:                      2
+  WEIGHTU:                    0
+  WEIGHTX:                    1
+  WEIGHTSSQMETHOD:            2
+  MAX FREQ:                   0,05
+  MIN FREQ:                   1000000
+  KK MAX FREQ:                10000000000
+  KK MIN FREQ:                1E-6
+  FIT MODE:                   0
+  RANGE MODE:                 1
+  FIT BEEP:                   0
+  Batch DCBias:               0
+  Batch Previous:             0
+  Batch Spectra:              0
+  Batch Print:                0
+  Batch Output
+  Batch Order:                0
+  Batch Time:                 0
+End ZView:                    2.0
+Begin Circuit Model:          13
+  Element #0 Type:            -1
+  Element #0 Name:            Begin_Parallel
+  Element #1 Type:            1
+  Element #1 Name:            R2
+  Element #1,0 Name:          R
+  Element #1,0 Value:         100
+  Element #1,0 Free:          0
+  Element #2 Type:            1
+  Element #2 Name:            R1
+  Element #2,0 Name:          R
+  Element #2,0 Value:         2,5E2
+  Element #2,0 Free:          1
+  Element #3 Type:            -2
+  Element #3 Name:            End_Parallel
+  Element #4 Type:            2
+  Element #4 Name:            C1
+  Element #4,1 Name:          T
+  Element #4,1 Value:         1,5E-6
+  Element #4,1 Free:          1
+  Element #5 Type:            3
+  Element #5 Name:            L1
+  Element #5,1 Name:          T
+  Element #5,1 Value:         2E-7
+  Element #5,1 Free:          0
+  Element #6 Type:            11
+  Element #6 Name:            CPE1
+  Element #6,1 Name:          T
+  Element #6,1 Value:         3E-5
+  Element #6,1 Free:          1
+  Element #6,2 Name:          P
+  Element #6,2 Value:         0,85
+  Element #6,2 Free:          1
+  Element #7 Type:            13
+  Element #7 Name:            QPE1
+  Element #7,1 Name:          Q
+  Element #7,1 Value:         4E-4
+  Element #7,1 Free:          1
+  Element #7,2 Name:          n
+  Element #7,2 Value:         0,9
+  Element #7,2 Free:          1
+  Element #8 Type:            12
+  Element #8 Name:            GE1
+  Element #8,1 Name:          T
+  Element #8,1 Value:         2E-3
+  Element #8,1 Free:          1
+  Element #8,2 Name:          P
+  Element #8,2 Value:         50
+  Element #8,2 Free:          1
+  Element #9 Type:            21
+  Element #9 Name:            Ws1
+  Element #9,0 Name:          R
+  Element #9,0 Value:         1000
+  Element #9,0 Free:          1
+  Element #9,1 Name:          T
+  Element #9,1 Value:         0,1
+  Element #9,1 Free:          1
+  Element #9,2 Name:          P
+  Element #9,2 Value:         0,45
+  Element #9,2 Free:          1
+  Element #10 Type:           22
+  Element #10 Name:           Wo1
+  Element #10,0 Name:         R
+  Element #10,0 Value:        500
+  Element #10,0 Free:         1
+  Element #10,1 Name:         T
+  Element #10,1 Value:        0,2
+  Element #10,1 Free:         1
+  Element #10,2 Name:         P
+  Element #10,2 Value:        0,5
+  Element #10,2 Free:         0
+  Element #11 Type:           23
+  Element #11 Name:           Ls1
+  Element #11,0 Name:         A
+  Element #11,0 Value:        3
+  Element #11,0 Free:         1
+  Element #11,1 Name:         B
+  Element #11,1 Value:        1E-3
+  Element #11,1 Free:         1
+  Element #11,2 Name:         Phi
+  Element #11,2 Value:        0,9
+  Element #11,2 Free:         1
+  Element #11,3 Name:         R
+  Element #11,3 Value:        2
+  Element #11,3 Free:         1
+  Element #12 Type:           24
+  Element #12 Name:           Lo1
+  Element #12,0 Name:         A
+  Element #12,0 Value:        3
+  Element #12,0 Free:         1
+  Element #12,1 Name:         B
+  Element #12,1 Value:        1E-3
+  Element #12,1 Free:         1
+  Element #12,2 Name:         Phi
+  Element #12,2 Value:        1
+  Element #12,2 Free:         0
+End Circuit Model:            13

@@ -1,0 +1,110 @@
+ZView Circuit Model:          2.0
+  IOPT:                       0
+  DINP:                       1
+  DFIT:                       1
+  PINP:                       4
+  PFIT:                       4
+  FREEQ:                      1
+  NEG:                        1
+  FUN:                        99
+  DATATYPE:                   0
+  IPAR:                       0
+  IFP:                        0
+  IRE:                        0
+  CELCAP:                     0
+  ROE:                        0
+  ATEMP:                      293
+  M:                          0
+  N:                          34
+  MAXFEV:                     100
+  NPRINT:                     9
+  IRCH:                       -3
+  MODE:                       0
+  ICP:                        0
+  IPRINT:                     1
+  IGACC:                      2
+  WEIGHTU:                    0
+  WEIGHTX:                    1
+  WEIGHTSSQMETHOD:            2
+  MAX FREQ:                   0,05
+  MIN FREQ:                   1000000
+  KK MAX FREQ:                10000000000
+  KK MIN FREQ:                1E-6
+  FIT MODE:                   0
+  RANGE MODE:                 1
+  FIT BEEP:                   0
+  Batch DCBias:               0
+  Batch Previous:             0
+  Batch Spectra:              0
+  Batch Print:                0
+  Batch Output
+  Batch Order:                0
+  Batch Time:                 0
+End ZView:                    2.0
+Begin Circuit Model:          19
+  Element #0 Type:            1
+  Element #0 Name:            R1
+  Element #0,0 Name:          R
+  Element #0,0 Value:         0
+  Element #0,0 Free:          0
+  Element #1 Type:            -1
+  Element #1 Name:            Begin_Parallel
+  Element #2 Type:            -3
+  Element #2 Name:            Begin_Series
+  Element #3 Type:            1
+  Element #3 Name:            R2
+  Element #3,0 Name:          R
+  Element #3,0 Value:         0
+  Element #3,0 Free:          0
+  Element #4 Type:            2
+  Element #4 Name:            C3
+  Element #4,1 Name:          T
+  Element #4,1 Value:         0
+  Element #4,1 Free:          0
+  Element #5 Type:            -4
+  Element #5 Name:            End_Series
+  Element #6 Type:            2
+  Element #6 Name:            C1
+  Element #6,1 Name:          T
+  Element #6,1 Value:         0
+  Element #6,1 Free:          0
+  Element #7 Type:            -3
+  Element #7 Name:            Begin_Series
+  Element #8 Type:            1
+  Element #8 Name:            R4
+  Element #8,0 Name:          R
+  Element #8,0 Value:         0
+  Element #8,0 Free:          0
+  Element #9 Type:            -1
+  Element #9 Name:            Begin_Parallel
+  Element #10 Type:           1
+  Element #10 Name:           R5
+  Element #10,0 Name:         R
+  Element #10,0 Value:        0
+  Element #10,0 Free:         0
+  Element #11 Type:           1
+  Element #11 Name:           R6
+  Element #11,0 Name:         R
+  Element #11,0 Value:        0
+  Element #11,0 Free:         0
+  Element #12 Type:           -2
+  Element #12 Name:           End_Parallel
+  Element #13 Type:           -4
+  Element #13 Name:           End_Series
+  Element #14 Type:           -2
+  Element #14 Name:           End_Parallel
+  Element #15 Type:           -1
+  Element #15 Name:           Begin_Parallel
+  Element #16 Type:           1
+  Element #16 Name:           R3
+  Element #16,0 Name:         R
+  Element #16,0 Value:        0
+  Element #16,0 Free:         0
+  Element #17 Type:           2
+  Element #17 Name:           C2
+  Element #17,1 Name:         T
+  Element #17,1 Value:        0
+  Element #17,1 Free:         0
+  Element #18 Type:           -2
+  Element #18 Name:           End_Parallel
+End Circuit Model:            19
