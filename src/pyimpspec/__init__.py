@@ -57,6 +57,7 @@ from pyimpspec.analysis.drt import (
     DRTPeakZARC,
     DRTPeakHavriliakNegami,
     DRTResult,
+    analyze_drt_peaks,
     calculate_drt,
 )
 from pyimpspec.analysis.fitting import (

@@ -7,6 +7,8 @@
   - Added `BaseDRTPeak`, `DRTPeakGaussian`, `DRTPeakZARC`, and `DRTPeakHavriliakNegami` classes. The area of these peaks is the resistance of the corresponding relaxation process.
   - Added `get_time_constant` and `get_height` methods to `DRTPeak`.
   - Added `--peak-shape` and `--global-optimization` CLI arguments.
+- Added `analyze_drt_peaks` function for analyzing the peaks of a DRT given its time constants and gamma values directly (e.g., DRTs that are not represented by a `DRTResult` instance).
+- Fixed a bug where analyzing peaks using skew normal distributions would fail when all gamma values are less than or equal to zero (e.g., the imaginary part of a BHT result). An empty set of peaks is now returned instead.
 
 
 # 5.2.0 (2026/09/24)

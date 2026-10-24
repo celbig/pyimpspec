@@ -35,7 +35,7 @@ from .peak_analysis import (
     DRTPeakGaussian,
     DRTPeakZARC,
     DRTPeakHavriliakNegami,
-    _analyze_peaks,
+    analyze_drt_peaks,
 )
 from pyimpspec.typing import (
     ComplexImpedances,
@@ -281,7 +281,7 @@ class DRTResult(ABC):
         elif not _is_boolean(disallow_skew):
             raise TypeError(f"Expected a boolean instead of {disallow_skew=}")
 
-        peaks: DRTPeaks = _analyze_peaks(
+        peaks: DRTPeaks = analyze_drt_peaks(
             *args,
             num_peaks=num_peaks,
             peak_positions=peak_positions,

@@ -837,6 +837,10 @@ def _analyze_peaks(
         raise TypeError(f"Expected an array of floats instead of {time_constants=}")
     elif not _is_floating_array(gammas):
         raise TypeError(f"Expected an array of floats instead of {gammas=}")
+    elif time_constants.shape != gammas.shape:
+        raise ValueError(
+            f"Expected {time_constants.shape=} to be equal to {gammas.shape=}"
+        )
     elif not _is_integer(num_peaks):
         raise TypeError(f"Expected an integer instead of {num_peaks=}")
     elif not (
@@ -895,6 +899,13 @@ def _analyze_peaks(
         y_offset: float64 = min(y)
         y = y - y_offset
         y_scale: float64 = max(y)
+        if y_scale <= 0.0:
+            return DRTPeaks(
+                time_constants=time_constants,
+                peaks=[],
+                suffix=suffix,
+                shape=shape,
+            )
         y /= y_scale
         assert isclose(min(y), 0.0), min(y)
         assert isclose(max(y), 1.0), max(y)
@@ -959,6 +970,78 @@ def _analyze_peaks(
         peaks=drt_peaks,
         suffix=suffix,
         shape=shape,
+    )
+
+
+def analyze_drt_peaks(
+    time_constants: TimeConstants,
+    gammas: Gammas,
+    num_peaks: int = 0,
+    peak_positions: Optional[Union[List[float], NDArray[float64]]] = None,
+    disallow_skew: bool = False,
+    shape: str = "skew-normal",
+    global_optimization: bool = False,
+    suffix: str = "",
+) -> DRTPeaks:
+    """
+    Analyze the peaks present in a distribution of relaxation times that is defined by arrays of time constants and gamma values.
+    This is useful for distributions that are not represented by a |DRTResult| instance.
+
+    Parameters
+    ----------
+    time_constants: |TimeConstants|
+        The time constants (s) of the distribution of relaxation times.
+
+    gammas: |Gammas|
+        The gamma values (ohm) of the distribution of relaxation times.
+        Must have the same shape as ``time_constants``.
+
+    num_peaks: int, optional
+        If greater than zero, then analyze only that number of peaks (sorted from highest to lowest gamma values).
+        Ignored if ``peak_positions`` is provided and not empty.
+
+    peak_positions: Optional[Union[List[float], NDArray[float64]]], optional
+        Analyze only the peaks at the provided positions (time constants).
+        Each position is matched to the closest time constant.
+        If provided and not empty, then this takes precedence over ``num_peaks``.
+
+    disallow_skew: bool, optional
+        If true, then normal distributions are used instead of skew normal distributions.
+        Only applicable when ``shape`` is ``"skew-normal"``.
+
+    shape: str, optional
+        The type of function to fit to each peak: ``"skew-normal"``, ``"gaussian"``, ``"zarc"``, or ``"havriliak-negami"``.
+        For the last three, the area of a peak (the resistance) is a parameter of the function.
+
+    global_optimization: bool, optional
+        If true, then a global search (differential evolution) is performed before the local least-squares refinement.
+        This is slower but more robust when peaks overlap.
+
+    suffix: str, optional
+        The suffix used in the labels when plotting the results.
+
+    Returns
+    -------
+    |DRTPeaks|
+        If the gamma values contain no positive values, then no peaks are found.
+
+    Raises
+    ------
+    TypeError
+        If an argument has an unexpected type.
+
+    ValueError
+        If ``shape`` is not a supported peak shape or if ``time_constants`` and ``gammas`` have different shapes.
+    """
+    return _analyze_peaks(
+        time_constants=time_constants,
+        gammas=gammas,
+        num_peaks=num_peaks,
+        peak_positions=peak_positions,
+        disallow_skew=disallow_skew,
+        suffix=suffix,
+        shape=shape,
+        global_optimization=global_optimization,
     )
 
 
