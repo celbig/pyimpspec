@@ -2,6 +2,11 @@
 
 - Added `pyimpspec.mpl.plot_subcircuits` for plotting the contribution of each component of a circuit's top-level series connection in a Nyquist plot.
 - Added the `subcircuits` and `subcircuit_offset` parameters to `pyimpspec.mpl.plot_fit`.
+- Added support for additional peak shapes when analyzing the peaks of DRT results (inspired by pyDRTtools):
+  - Added `shape` and `global_optimization` arguments to the `analyze_peaks` methods. The `shape` can be `"skew-normal"` (default), `"gaussian"`, `"zarc"`, or `"havriliak-negami"`.
+  - Added `BaseDRTPeak`, `DRTPeakGaussian`, `DRTPeakZARC`, and `DRTPeakHavriliakNegami` classes. The area of these peaks is the resistance of the corresponding relaxation process.
+  - Added `get_time_constant` and `get_height` methods to `DRTPeak`.
+  - Added `--peak-shape` and `--global-optimization` CLI arguments.
 
 
 # 5.2.0 (2026/09/24)

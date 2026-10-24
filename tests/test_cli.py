@@ -572,6 +572,8 @@ class TestDRT(TestCase):
             ("--num-peaks", "-np", "num_peaks", 2),
             ("--peak-positions", "-pp", "peak_positions", [1e-1, 0.2]),
             ("--disallow-skew", "-ds", "disallow_skew", True),
+            ("--peak-shape", "-ps", "peak_shape", "zarc"),
+            ("--global-optimization", "-go", "global_optimization", True),
         ]:
             args_long: Namespace
             if isinstance(value, bool):

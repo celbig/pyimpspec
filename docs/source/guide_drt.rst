@@ -291,6 +291,18 @@ This facilitates the estimation of the polarization contribution of each peak ba
    | 9.76195     |   0.364749    |    0.552689    |
 
 
+By default, each peak is modeled using a skew normal distribution and its area is obtained by numerical integration.
+Alternatively, the ``shape`` argument can be used to fit Gaussian (``"gaussian"``), ZARC (``"zarc"``), or Havriliak-Negami (``"havriliak-negami"``) functions, similar to pyDRTtools.
+For the ZARC and Havriliak-Negami functions, the resistance :math:`R` of each relaxation process is a parameter of the fitted function and also equals the area of the peak.
+The ``global_optimization`` argument can be used to perform a global search (differential evolution) before refining the fit, which is slower but more robust when peaks overlap.
+
+.. code:: python
+
+   peaks = drt.analyze_peaks(shape="zarc", global_optimization=True)
+   peaks.to_peaks_dataframe().to_markdown(index=False)
+   [(peak.R, peak.tau, peak.n) for peak in peaks]
+
+
 .. list-table:: True and estimated values of parallel RC elements.
    :header-rows: 1
 
