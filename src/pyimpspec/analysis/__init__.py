@@ -39,6 +39,7 @@ from .drt import (
     DRTPeakGaussian,
     DRTPeakZARC,
     DRTPeakHavriliakNegami,
+    analyze_drt_peaks,
     DRTResult,
     LMResult,
     MRQFitResult,

@@ -36,6 +36,7 @@ from numpy import (
     log10 as log,
     ndarray,
     sort,
+    zeros,
 )
 from numpy.random import (
     seed,
@@ -48,6 +49,7 @@ from pyimpspec import (
     DRTPeaks,
     DRTResult,
     DataSet,
+    analyze_drt_peaks,
     calculate_drt,
     fit_circuit,
     generate_mock_data,
@@ -63,6 +65,7 @@ from pyimpspec.analysis.drt import (
 )
 from pyimpspec.exceptions import DRTError
 from pyimpspec.analysis.drt import _METHODS
+from pyimpspec.analysis.drt.peak_analysis import _PEAK_SHAPES
 from pyimpspec.analysis.drt.tr_rbf import (
     _MODES,
     _RBF_SHAPES,
@@ -160,6 +163,17 @@ class TestLoewnerMethod(TestCase):
         self.assertEqual(gammas_RL.dtype, Gamma)
         self.assertTrue((gammas_RC >= 0.0).all())
         self.assertTrue((gammas_RL >= 0.0).all())
+
+    def test_analyze_peaks_shape(self):
+        shape: str
+        for shape in _PEAK_SHAPES:
+            peaks_RC, peaks_RL = self.result.analyze_peaks(shape=shape)
+            self.assertEqual(peaks_RC.shape, shape)
+            self.assertEqual(peaks_RL.shape, shape)
+            self.assertEqual(peaks_RC.get_num_peaks(), 0)
+            self.assertEqual(peaks_RL.get_num_peaks(), 0)
+            self.assertEqual(peaks_RC.suffix, "RC")
+            self.assertEqual(peaks_RL.suffix, "RL")
 
     def test_result_to_statistics_dataframe(self):
         df: DataFrame = self.result.to_statistics_dataframe()
@@ -977,6 +991,70 @@ class TestDRT(TestCase):
                     expected_values[i],
                     delta=0.1*expected_values[i],
                 )
+
+    def test_analyze_drt_peaks(self):
+        data: DataSet = generate_mock_data(
+            "R{R=140}(R{R=230}C{C=1e-6})(R{R=576}C{C=1e-4})",
+            noise=0,
+        )[0]
+        result = calculate_drt(data, method="tr-nnls")
+        time_constants, gammas = result.get_drt_data()
+
+        shape: str
+        for shape in _PEAK_SHAPES:
+            expected = result.analyze_peaks(num_peaks=2, shape=shape)
+            peaks = analyze_drt_peaks(
+                time_constants,
+                gammas,
+                num_peaks=2,
+                shape=shape,
+            )
+            self.assertIsInstance(peaks, DRTPeaks)
+            self.assertEqual(peaks.shape, shape, msg=shape)
+            self.assertEqual(peaks.get_num_peaks(), 2, msg=shape)
+            self.assertEqual(peaks.peaks, expected.peaks, msg=shape)
+            self.assertTrue(
+                peaks.to_peaks_dataframe().equals(expected.to_peaks_dataframe()),
+                msg=shape,
+            )
+
+        peaks = analyze_drt_peaks(time_constants, gammas, num_peaks=2, suffix="foo")
+        self.assertEqual(peaks.suffix, "foo")
+        self.assertIn("foo", peaks.to_peaks_dataframe().columns[0])
+
+    def test_analyze_drt_peaks_nonpositive_gammas(self):
+        time_constants, gammas = self._method_results["tr-nnls"].get_drt_data()
+        self.assertGreater(max(gammas), 0.0)
+
+        shape: str
+        for shape in _PEAK_SHAPES:
+            values: ndarray
+            for values in (zeros(gammas.shape), -gammas):
+                peaks = analyze_drt_peaks(time_constants, values, shape=shape)
+                self.assertEqual(peaks.get_num_peaks(), 0, msg=shape)
+                self.assertEqual(peaks.shape, shape, msg=shape)
+
+        peaks_real, peaks_imag = self._method_results["bht"].analyze_peaks()
+        self.assertIsInstance(peaks_real, DRTPeaks)
+        self.assertIsInstance(peaks_imag, DRTPeaks)
+
+    def test_analyze_drt_peaks_errors(self):
+        time_constants, gammas = self._method_results["tr-nnls"].get_drt_data()
+
+        with self.assertRaises(TypeError):
+            analyze_drt_peaks(time_constants, gammas, shape=2)
+
+        with self.assertRaises(TypeError):
+            analyze_drt_peaks(list(time_constants), gammas)
+
+        with self.assertRaises(TypeError):
+            analyze_drt_peaks(time_constants, list(gammas))
+
+        with self.assertRaises(ValueError):
+            analyze_drt_peaks(time_constants, gammas, shape="foo")
+
+        with self.assertRaises(ValueError):
+            analyze_drt_peaks(time_constants, gammas[:-1])
 
     def test_peak_shapes(self):
         from pyimpspec import (

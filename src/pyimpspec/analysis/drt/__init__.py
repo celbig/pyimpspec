@@ -28,6 +28,7 @@ from .result import (
     DRTPeakZARC,
     DRTPeakHavriliakNegami,
     DRTResult,
+    analyze_drt_peaks,
 )
 from .tr_nnls import (
     TRNNLSResult,

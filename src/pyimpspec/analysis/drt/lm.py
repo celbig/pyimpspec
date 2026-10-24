@@ -375,11 +375,13 @@ class LMResult(DRTResult):
                 self._resistive_capacitive_time_constants,
                 peaks=[],
                 suffix="RC",
+                shape=shape,
             ),
             DRTPeaks(
                 self._resistive_inductive_time_constants,
                 peaks=[],
                 suffix="RL",
+                shape=shape,
             ),
         )
 

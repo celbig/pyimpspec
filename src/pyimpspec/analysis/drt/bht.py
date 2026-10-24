@@ -64,7 +64,7 @@ from pyimpspec.exceptions import DRTError
 from .result import DRTResult
 from .peak_analysis import (
     DRTPeaks,
-    _analyze_peaks,
+    analyze_drt_peaks,
 )
 from .tr_rbf import (
     _RBF_SHAPES,
@@ -399,7 +399,7 @@ class BHTResult(DRTResult):
         Tuple[|DRTPeaks|, |DRTPeaks|]
             The first and second |DRTPeaks| instance corresponds to the DRT generated based on the real or imaginary part, respectively, of the impedance spectrum.
         """
-        peaks_real: DRTPeaks = _analyze_peaks(
+        peaks_real: DRTPeaks = analyze_drt_peaks(
             self.time_constants,
             self.real_gammas,
             num_peaks=num_peaks,
@@ -409,7 +409,7 @@ class BHTResult(DRTResult):
             global_optimization=global_optimization,
             suffix="real",
         )
-        peaks_imag: DRTPeaks = _analyze_peaks(
+        peaks_imag: DRTPeaks = analyze_drt_peaks(
             self.time_constants,
             self.imaginary_gammas,
             num_peaks=num_peaks,
