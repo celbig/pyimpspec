@@ -17,7 +17,7 @@ Wrapper function and base class
 Classes related to peak analysis
 --------------------------------
 .. automodule:: pyimpspec
-   :members: DRTPeaks, DRTPeak
+   :members: DRTPeaks, BaseDRTPeak, DRTPeak, DRTPeakGaussian, DRTPeakZARC, DRTPeakHavriliakNegami
 
 
 Method functions and classes

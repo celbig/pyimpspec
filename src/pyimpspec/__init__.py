@@ -53,6 +53,10 @@ from pyimpspec.analysis.utility import (
 from pyimpspec.analysis.drt import (
     DRTPeaks,
     DRTPeak,
+    BaseDRTPeak,
+    DRTPeakGaussian,
+    DRTPeakZARC,
+    DRTPeakHavriliakNegami,
     DRTResult,
     calculate_drt,
 )

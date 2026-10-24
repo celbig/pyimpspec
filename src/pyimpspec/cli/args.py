@@ -604,7 +604,7 @@ Defaults to -1.
         "-ap",
         dest="analyze_peaks",
         action="store_true",
-        help="Perform peak analyses by fitting skew normal distributions.",
+        help="Perform peak analyses by fitting, e.g., skew normal distributions (see --peak-shape).",
     )
     parser.add_argument(
         "--num-peaks",
@@ -630,6 +630,22 @@ Defaults to -1.
         dest="disallow_skew",
         action="store_true",
         help="If true, then normal distributions are used instead of skew normal distributions when analyzing peaks.",
+    )
+    parser.add_argument(
+        "--peak-shape",
+        "-ps",
+        dest="peak_shape",
+        metavar="STRING",
+        type=str,
+        default="skew-normal",
+        help="The type of function to fit to each peak: 'skew-normal', 'gaussian', 'zarc', or 'havriliak-negami'. The area of each peak is the corresponding resistance. Defaults to 'skew-normal'.",
+    )
+    parser.add_argument(
+        "--global-optimization",
+        "-go",
+        dest="global_optimization",
+        action="store_true",
+        help="Perform a global search (differential evolution) before the least-squares refinement when analyzing peaks. This is slower but more robust when peaks overlap.",
     )
     add_output_args(parser)
     add_plot_args(parser)

@@ -272,6 +272,8 @@ def individual_plots(
                     num_peaks=args.num_peaks,
                     peak_positions=args.peak_positions or None,
                     disallow_skew=args.disallow_skew,
+                    shape=args.peak_shape,
+                    global_optimization=args.global_optimization,
                 )
 
             clear_default_handler_output()

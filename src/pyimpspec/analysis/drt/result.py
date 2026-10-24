@@ -29,8 +29,12 @@ from numpy import (
     zeros,
 )
 from .peak_analysis import (
+    BaseDRTPeak,
     DRTPeaks,
     DRTPeak,
+    DRTPeakGaussian,
+    DRTPeakZARC,
+    DRTPeakHavriliakNegami,
     _analyze_peaks,
 )
 from pyimpspec.typing import (
@@ -235,6 +239,8 @@ class DRTResult(ABC):
         num_peaks: int = 0,
         peak_positions: Optional[Union[List[float], NDArray[float64]]] = None,
         disallow_skew: bool = False,
+        shape: str = "skew-normal",
+        global_optimization: bool = False,
     ) -> DRTPeaks:
         """
         Analyze the peaks present in a distribution of relaxation times using skew normal distributions.
@@ -249,6 +255,15 @@ class DRTResult(ABC):
 
         disallow_skew: bool, optional
             If true, then normal distributions are used instead of skew normal distributions.
+            Only applicable when ``shape`` is ``"skew-normal"``.
+
+        shape: str, optional
+            The type of function to fit to each peak: ``"skew-normal"``, ``"gaussian"``, ``"zarc"``, or ``"havriliak-negami"``.
+            For the last three, the area of a peak (the resistance) is a parameter of the function.
+
+        global_optimization: bool, optional
+            If true, then a global search (differential evolution) is performed before the local least-squares refinement.
+            This is slower but more robust when peaks overlap.
 
         Returns
         -------
@@ -271,6 +286,8 @@ class DRTResult(ABC):
             num_peaks=num_peaks,
             peak_positions=peak_positions,
             disallow_skew=disallow_skew,
+            shape=shape,
+            global_optimization=global_optimization,
         )
         object.__setattr__(self, "_peak_analysis", peaks)
 

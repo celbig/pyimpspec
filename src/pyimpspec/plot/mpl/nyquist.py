@@ -51,6 +51,16 @@ from .helpers import (
 )
 
 
+def _adjust_nyquist_axes(axis: "Axes", admittance: bool):  # noqa: F821
+    from matplotlib.ticker import EngFormatter
+
+    axis.set_xlabel(r"${\rm Re}(Y)\ (S)$" if admittance else r"${\rm Re}(Z)\ (\Omega)$")
+    axis.set_ylabel(r"${\rm Im}(Y)\ (S)$" if admittance else r"$-{\rm Im}(Z)\ (\Omega)$")
+    axis.xaxis.set_major_formatter(EngFormatter(unit=""))
+    axis.yaxis.set_major_formatter(EngFormatter(unit=""))
+    axis.set_aspect("equal", adjustable="datalim")
+
+
 def plot_nyquist(
     data: Optional[Union[DataSet, KramersKronigResult, FitResult, DRTResult]],
     label: Optional[str] = None,
@@ -109,7 +119,6 @@ def plot_nyquist(
     -------
     Tuple[|Figure|, List[|Axes|]]
     """
-    from matplotlib.ticker import EngFormatter
     from matplotlib.axes import Axes
 
     if figure is None:
@@ -188,11 +197,7 @@ def plot_nyquist(
     if not _is_boolean(adjust_axes):
         raise TypeError(f"Expected a boolean instead of {adjust_axes=}")
     elif adjust_axes:
-        axis.set_xlabel(r"${\rm Re}(Y)\ (S)$" if admittance else r"${\rm Re}(Z)\ (\Omega)$")
-        axis.set_ylabel(r"${\rm Im}(Y)\ (S)$" if admittance else r"$-{\rm Im}(Z)\ (\Omega)$")
-        axis.xaxis.set_major_formatter(EngFormatter(unit=""))
-        axis.yaxis.set_major_formatter(EngFormatter(unit=""))
-        axis.set_aspect("equal", adjustable="datalim")
+        _adjust_nyquist_axes(axis, admittance)
 
     if not _is_boolean(legend):
         raise TypeError(f"Expected a boolean instead of {legend=}")

@@ -23,6 +23,10 @@ from pyimpspec.exceptions import DRTError
 from .result import (
     DRTPeaks,
     DRTPeak,
+    BaseDRTPeak,
+    DRTPeakGaussian,
+    DRTPeakZARC,
+    DRTPeakHavriliakNegami,
     DRTResult,
 )
 from .tr_nnls import (

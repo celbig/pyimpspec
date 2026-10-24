@@ -56,6 +56,7 @@ from .markers import (
 from .bode import plot_bode
 from .residuals import plot_residuals
 from .nyquist import plot_nyquist
+from .subcircuits import plot_subcircuits
 
 
 def plot_fit(
@@ -72,6 +73,8 @@ def plot_fit(
     axes: Optional[List["Axes"]] = None,  # noqa: F821
     adjust_axes: bool = True,
     colored_axes: bool = False,
+    subcircuits: bool = False,
+    subcircuit_offset: str = "none",
     **kwargs,
 ) -> Tuple["Figure", List["Axes"]]:  # noqa: F821
     """
@@ -118,6 +121,14 @@ def plot_fit(
 
     colored_axes: bool, optional
         Color the y-axes.
+
+    subcircuits: bool, optional
+        Plot the contribution of each component of the circuit's top-level series connection in the Nyquist plot.
+        Only supported for |FitResult| instances and not when plotting admittance.
+
+    subcircuit_offset: str, optional
+        Where the contributions of the components are placed on the real axis ('none' or 'series_resistance').
+        See :func:`~pyimpspec.mpl.plot_subcircuits`.
 
     **kwargs
 
@@ -170,6 +181,14 @@ def plot_fit(
 
     if not _is_boolean(adjust_axes):
         raise TypeError(f"Expected a boolean instead of {adjust_axes=}")
+
+    if not _is_boolean(subcircuits):
+        raise TypeError(f"Expected a boolean instead of {subcircuits=}")
+    elif subcircuits:
+        if not isinstance(fit, FitResult):
+            raise TypeError(f"Expected a FitResult when plotting subcircuits instead of {fit=}")
+        elif admittance:
+            raise ValueError("Subcircuit contributions cannot be plotted as admittance")
 
     if figure is None:
         figure, axes = plt.subplot_mosaic(
@@ -247,6 +266,17 @@ def plot_fit(
         axes=[axes[0]],
         adjust_axes=adjust_axes,
     )
+
+    if subcircuits:
+        plot_subcircuits(
+            fit,
+            offset=subcircuit_offset,
+            legend=False,
+            figure=figure,
+            axes=[axes[0]],
+            adjust_axes=adjust_axes,
+            num_per_decade=num_per_decade,
+        )
 
     plot_nyquist(
         fit,

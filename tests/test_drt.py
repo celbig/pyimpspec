@@ -941,6 +941,15 @@ class TestDRT(TestCase):
         with self.assertRaises(TypeError):
             result.analyze_peaks(disallow_skew=2)
 
+        with self.assertRaises(TypeError):
+            result.analyze_peaks(shape=2)
+
+        with self.assertRaises(ValueError):
+            result.analyze_peaks(shape="foo")
+
+        with self.assertRaises(TypeError):
+            result.analyze_peaks(global_optimization=2)
+
         method: str
         for method in _METHODS:
             if method in ("bht", "lm", "mrq-fit"):
@@ -968,6 +977,115 @@ class TestDRT(TestCase):
                     expected_values[i],
                     delta=0.1*expected_values[i],
                 )
+
+    def test_peak_shapes(self):
+        from pyimpspec import (
+            DRTPeakGaussian,
+            DRTPeakHavriliakNegami,
+            DRTPeakZARC,
+        )
+        from numpy import array, linspace, pi
+        from numpy import log as ln
+
+        peaks = [
+            DRTPeakGaussian(R=100.0, tau=1e-3, sigma=0.8),
+            DRTPeakZARC(R=100.0, tau=1e-3, n=0.8),
+            DRTPeakHavriliakNegami(R=100.0, tau=1e-3, a=0.8, b=0.6),
+        ]
+        frequencies = array([0.1, 10.0, 1e3])
+
+        peak: BaseDRTPeak
+        for peak in peaks:
+            u0: float = ln(peak.tau)
+            self.assertAlmostEqual(
+                quad(peak._get_gamma, u0 - 60, u0 + 60, points=[u0], limit=500)[0],
+                peak.get_area(),
+                delta=1e-6 * peak.R,
+            )
+            self.assertAlmostEqual(
+                peak.get_height(),
+                max(peak.get_gammas(10 ** linspace(-12, 6, 20001))),
+                delta=1e-3 * peak.get_height(),
+            )
+
+            if isinstance(peak, DRTPeakHavriliakNegami):
+                continue
+
+            self.assertAlmostEqual(peak.get_time_constant(), peak.tau)
+
+        # The DRTs must reproduce the impedances of the corresponding elements
+        def impedance(peak, f):
+            func = lambda u, g: g(u) / (1 + 1j * 2 * pi * f * exp(u))
+            u0 = ln(peak.tau)
+            return sum(
+                part * quad(lambda u: getattr(func(u, peak._get_gamma), name), u0 - 60, u0 + 60, points=[u0], limit=500)[0]
+                for part, name in ((1.0, "real"), (1j, "imag"))
+            )
+
+        for f in frequencies:
+            self.assertAlmostEqual(
+                impedance(peaks[1], f),
+                100.0 / (1 + (1j * 2 * pi * f * 1e-3) ** 0.8),
+                delta=1e-4,
+            )
+            self.assertAlmostEqual(
+                impedance(peaks[2], f),
+                100.0 / (1 + (1j * 2 * pi * f * 1e-3) ** 0.8) ** 0.6,
+                delta=1e-4,
+            )
+
+        # Havriliak-Negami with b=1 is equivalent to ZARC
+        u = linspace(-10, 5, 50)
+        self.assertTrue(
+            allclose(
+                DRTPeakHavriliakNegami(100.0, 1e-3, 0.8, 1.0)._get_gamma(u),
+                peaks[1]._get_gamma(u),
+            )
+        )
+
+    def test_analyze_peaks_shapes(self):
+        data: DataSet = generate_mock_data(
+            "R{R=140}(R{R=230}C{C=1e-6})(R{R=576}C{C=1e-4})",
+            noise=0,
+        )[0]
+        result = calculate_drt(data, method="tr-nnls")
+
+        shape: str
+        for shape in ("gaussian", "zarc", "havriliak-negami"):
+            global_optimization: bool
+            for global_optimization in (False, True):
+                peaks = result.analyze_peaks(
+                    num_peaks=2,
+                    shape=shape,
+                    global_optimization=global_optimization,
+                )
+                self.assertEqual(peaks.shape, shape)
+                self.assertEqual(peaks.get_num_peaks(), 2)
+                i: int
+                for i, expected in enumerate((230.0, 576.0)):
+                    self.assertAlmostEqual(
+                        peaks.get_peak_area(i),
+                        expected,
+                        delta=0.25 * expected,
+                    )
+                self.assertEqual(
+                    list(peaks.to_peaks_dataframe().columns),
+                    ["tau (s)", "gamma (ohm)", "R_peak (ohm)"],
+                )
+
+        data = generate_mock_data(
+            "R{R=100}Zarc{R=230,tau=1e-4,n=0.85}Zarc{R=576,tau=1e-1,n=0.9}",
+            noise=0,
+        )[0]
+        peaks = calculate_drt(data, method="tr-nnls").analyze_peaks(
+            num_peaks=2,
+            shape="zarc",
+            global_optimization=True,  # The peaks overlap, so a local search alone is unreliable
+        )
+        for i, (R, tau, n) in enumerate(((230.0, 1e-4, 0.85), (576.0, 1e-1, 0.9))):
+            self.assertAlmostEqual(peaks.peaks[i].R, R, delta=0.2 * R)
+            self.assertAlmostEqual(peaks.peaks[i].tau, tau, delta=0.2 * tau)
+            self.assertAlmostEqual(peaks.peaks[i].n, n, delta=0.1)
 
     def test_matplotlib(self):
         drt: DRTResult
