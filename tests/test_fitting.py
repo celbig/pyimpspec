@@ -46,8 +46,6 @@ from pyimpspec import (
     perform_kramers_kronig_test,
 )
 from pyimpspec.analysis.fitting import validate_circuit
-from pyimpspec.circuit.base import _calculate_impedances
-from pyimpspec.plot.mpl.subcircuits import _get_series_components
 from pyimpspec.typing import (
     ComplexImpedance,
     ComplexImpedances,
@@ -570,7 +568,7 @@ class SubcircuitContributions(TestCase):
         return len(axis.lines) + len(axis.collections)
 
     def test_components(self):
-        components = _get_series_components(self.result.circuit)
+        components = self.result.circuit.get_subcircuit_impedances(self.frequencies)
         self.assertEqual(
             [label for label, _ in components],
             ["R_1", "(R_2C_1)", "(R_3W_1)"],
@@ -578,10 +576,65 @@ class SubcircuitContributions(TestCase):
 
     def test_sum_of_contributions(self):
         Z: ComplexImpedances = sum(
-            _calculate_impedances(item, self.frequencies)
-            for _, item in _get_series_components(self.result.circuit)
+            Z_i
+            for _, Z_i in self.result.circuit.get_subcircuit_impedances(self.frequencies)
         )
         self.assertTrue(allclose(Z, self.result.circuit.get_impedances(self.frequencies)))
+
+    def test_series_resistance_contributions(self):
+        circuit = self.result.circuit
+        Rs: float = circuit.get_elements()[0].get_value("R")
+        exact = dict(circuit.get_subcircuit_impedances(self.frequencies))
+        offset = dict(
+            circuit.get_subcircuit_impedances(
+                self.frequencies,
+                offset="series_resistance",
+            )
+        )
+        self.assertEqual(list(offset.keys()), ["(R_2C_1)", "(R_3W_1)"])
+        for label, Z in offset.items():
+            self.assertTrue(allclose(Z, exact[label] + Rs))
+
+    def test_no_series_resistance(self):
+        circuit = parse_cdc("(RC)(RW)")
+        components = circuit.get_subcircuit_impedances(
+            self.frequencies,
+            offset="series_resistance",
+        )
+        for (_, Z_offset), (_, Z) in zip(
+            components,
+            circuit.get_subcircuit_impedances(self.frequencies),
+        ):
+            self.assertTrue(allclose(Z_offset, Z))
+
+    def test_only_resistors(self):
+        circuit = parse_cdc("RR")
+        self.assertEqual(len(circuit.get_subcircuit_impedances(self.frequencies)), 2)
+        self.assertEqual(
+            circuit.get_subcircuit_impedances(self.frequencies, offset="series_resistance"),
+            [],
+        )
+
+    def test_invalid_offset(self):
+        with self.assertRaises(ValueError):
+            self.result.circuit.get_subcircuit_impedances(self.frequencies, offset="invalid")
+
+    def test_duck_typed_fit_result(self):
+        class Other:
+            # Stands in for fit results that are not instances of FitResult
+            def __init__(self, result: FitResult):
+                self._result = result
+
+            def __getattr__(self, name: str):
+                return getattr(self._result, name)
+
+        other = Other(self.result)
+        figure, axes = mpl.plot_subcircuits(other)
+        self.assertEqual(self.get_axis_artists(axes[0]), 3)
+        check_mpl_return_values(
+            self,
+            *mpl.plot_fit(other, data=DATA, subcircuits=True),
+        )
 
     def test_plot_fit_result(self):
         figure, axes = mpl.plot_subcircuits(self.result)

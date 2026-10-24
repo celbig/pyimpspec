@@ -56,7 +56,10 @@ from .markers import (
 from .bode import plot_bode
 from .residuals import plot_residuals
 from .nyquist import plot_nyquist
-from .subcircuits import plot_subcircuits
+from .subcircuits import (
+    _is_fit_result_like,
+    plot_subcircuits,
+)
 
 
 def plot_fit(
@@ -185,7 +188,7 @@ def plot_fit(
     if not _is_boolean(subcircuits):
         raise TypeError(f"Expected a boolean instead of {subcircuits=}")
     elif subcircuits:
-        if not isinstance(fit, FitResult):
+        if not _is_fit_result_like(fit):
             raise TypeError(f"Expected a FitResult when plotting subcircuits instead of {fit=}")
         elif admittance:
             raise ValueError("Subcircuit contributions cannot be plotted as admittance")

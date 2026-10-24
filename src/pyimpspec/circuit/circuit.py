@@ -31,6 +31,7 @@ from .base import (
 )
 from .series import Series
 from .parallel import Parallel
+from .resistor import Resistor
 from sympy import (
     Expr,
     latex,
@@ -46,6 +47,12 @@ VERSION: int = 1
 
 
 ElementParameters = Dict[str, Dict[str, str]]
+
+
+_SUBCIRCUIT_OFFSETS: Tuple[str, ...] = (
+    "none",
+    "series_resistance",
+)
 
 
 class Circuit:
@@ -251,6 +258,74 @@ class Circuit:
         str
         """
         return self._elements.get_element_name(element=element, identifiers=identifiers)
+
+    def get_subcircuit_impedances(
+        self,
+        frequencies: Frequencies,
+        offset: str = "none",
+    ) -> List[Tuple[str, ComplexImpedances]]:
+        """
+        Get the label and the impedances of each component of the top-level series connection of this circuit.
+        For example, the components of ``R(RC)(RW)`` are ``R``, ``(RC)``, and ``(RW)``.
+        Since the impedances of elements connected in series add up, the individual contributions sum up to the impedance of the whole circuit.
+
+        Parameters
+        ----------
+        frequencies: |Frequencies|
+            The frequencies (in hertz) at which to calculate the impedances.
+
+        offset: str, optional
+            Whether the resistors in the top-level series connection (e.g., the ohmic resistance) are kept as separate contributions or added to the other contributions.
+            'none': the contributions are exact and sum up to the impedance of the circuit.
+            'series_resistance': the sum of the resistors in the top-level series connection is added to the real part of each of the other contributions and the resistors are not included in the returned list.
+
+        Returns
+        -------
+        List[Tuple[str, |ComplexImpedances|]]
+        """
+        if offset not in _SUBCIRCUIT_OFFSETS:
+            raise ValueError(f"Expected one of {_SUBCIRCUIT_OFFSETS} instead of {offset=}")
+
+        identifiers: Dict[Element, int] = self.generate_element_identifiers(running=False)
+        components: List[Tuple[str, Union[Element, Connection]]] = [
+            (self._get_component_label(item, identifiers), item) for item in self
+        ]
+
+        series_resistance: float = 0.0
+        if offset == "series_resistance":
+            series_resistance = sum(
+                item.get_values()["R"]
+                for _, item in components
+                if isinstance(item, Resistor)
+            )
+            components = [
+                (label, item)
+                for label, item in components
+                if not isinstance(item, Resistor)
+            ]
+
+        return [
+            (label, item.get_impedances(frequencies) + series_resistance)
+            for label, item in components
+        ]
+
+    def _get_component_label(
+        self,
+        item: Union[Element, Connection],
+        identifiers: Dict[Element, int],
+    ) -> str:
+        if isinstance(item, Element):
+            return self.get_element_name(item, identifiers)
+
+        label: str = "".join(
+            self._get_component_label(child, identifiers) for child in item
+        )
+        if isinstance(item, Parallel):
+            return f"({label})"
+        elif isinstance(item, Series):
+            return f"[{label}]"
+
+        raise NotImplementedError(f"Unsupported connection: '{type(item)}'")
 
     def to_sympy(self, substitute: bool = False) -> Expr:
         """
