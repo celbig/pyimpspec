@@ -50,7 +50,7 @@ class DeLevieFiniteLength(Element):
     ) -> ComplexImpedances:
         alpha: float64 = sqrt(R_r * R_i)
         beta: ComplexImpedances = sqrt(1 + Y * (1j * 2 * pi * f) ** n)
-        return (alpha * (coth(d * alpha * beta)) / beta)
+        return alpha * coth(d * sqrt(R_i / R_r) * beta) / beta
 
 
 register_element(

@@ -36,8 +36,13 @@ from typing import (
     Type,
 )
 from numpy import (
+    allclose,
     array,
     inf,
+    logspace,
+    pi,
+    sqrt,
+    tanh,
 )
 from pyimpspec import (
     Connection,
@@ -81,6 +86,8 @@ from pyimpspec.circuit.registry import (
 )
 from pyimpspec.circuit.base import InfiniteLimit
 from pyimpspec.typing import (
+    ComplexImpedance,
+    ComplexImpedances,
     Frequencies,
     Frequency,
 )
@@ -461,6 +468,40 @@ class TestElement(TestCase):
                 pass
             except NotImplementedError:
                 pass
+
+    def test_de_levie_finite_length(self):
+        # R_r != 1 because sqrt(R_i * R_r) == sqrt(R_i / R_r) when R_r == 1,
+        # which is the case for the default parameter values
+        R_i: float = 7.0
+        R_r: float = 3.0
+        Y: float = 2e-3
+        n: float = 0.85
+        d: float = 0.15
+        f: Frequencies = logspace(-3, 6, num=46, dtype=Frequency)
+        element: DeLevieFiniteLength = DeLevieFiniteLength(
+            R_i=R_i,
+            R_r=R_r,
+            Y=Y,
+            n=n,
+            d=d,
+        )
+        Z: ComplexImpedances = element.get_impedances(f)
+
+        beta: ComplexImpedances = sqrt(1 + Y * (1j * 2 * pi * f) ** n)
+        Z_ref: ComplexImpedances = sqrt(R_i * R_r) / tanh(d * sqrt(R_i / R_r) * beta) / beta
+        self.assertTrue(allclose(Z.real, Z_ref.real))
+        self.assertTrue(allclose(Z.imag, Z_ref.imag))
+
+        Z_old: ComplexImpedances = sqrt(R_i * R_r) / tanh(d * sqrt(R_i * R_r) * beta) / beta
+        self.assertFalse(allclose(Z, Z_old))
+
+        expr = element.to_sympy(substitute=True)
+        Z_sympy: ComplexImpedances = array(
+            list(map(lambda _: complex(expr.subs("f", _)), f)),
+            dtype=ComplexImpedance,
+        )
+        self.assertTrue(allclose(Z.real, Z_sympy.real))
+        self.assertTrue(allclose(Z.imag, Z_sympy.imag))
 
     def test_get_elements(self):
         def check(
