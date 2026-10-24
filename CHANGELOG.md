@@ -1,3 +1,8 @@
+# 5.2.1 (unreleased)
+
+- Fixed parsing of ZPlotLab (e.g., ModuLab) `.z` files that have a header block.
+
+
 # 5.2.0 (2026/09/24)
 
 - Added support for `.crv` files from OrigaLys.

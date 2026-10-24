@@ -71,12 +71,13 @@ def parse_z(path: Union[str, Path], **kwargs) -> List[DataSet]:
 
         for line in fp:
             line = line.lower().strip()
-            if "end comments" in line:
+            if line == "" or line.startswith("end "):
+                # Skip blank lines and the end of comment/header blocks
                 continue
-            else:
-                lines.append(line)
 
-        if len(lines) < 0:
+            lines.append(line)
+
+        if len(lines) < 2:
             raise UnsupportedFileFormat("Expected at least one row of data")
 
     csv: str = "\n".join(lines)
