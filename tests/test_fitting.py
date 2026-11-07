@@ -22,6 +22,8 @@ from lmfit.minimizer import MinimizerResult
 from numpy import (
     allclose,
     angle,
+    array,
+    isfinite,
     float64,
     zeros,
 )
@@ -615,6 +617,79 @@ class SubcircuitContributions(TestCase):
             [],
         )
 
+    def test_cumulative_dc_offset(self):
+        circuit = self.result.circuit
+        R_1, R_2 = (e.get_value("R") for e in circuit.get_elements()[:2])
+        exact = dict(circuit.get_subcircuit_impedances(self.frequencies))
+        offset = dict(
+            circuit.get_subcircuit_impedances(
+                self.frequencies,
+                offset="cumulative_dc",
+            )
+        )
+        self.assertEqual(list(offset.keys()), ["(R_2C_1)", "(R_3W_1)"])
+        self.assertTrue(allclose(offset["(R_2C_1)"], exact["(R_2C_1)"] + R_1))
+        self.assertTrue(
+            allclose(offset["(R_3W_1)"], exact["(R_3W_1)"] + R_1 + R_2, rtol=1e-3)
+        )
+
+    def test_cumulative_dc_order(self):
+        # The order of the circuit does not matter: the faster (RC) only gets the series resistance
+        circuit = parse_cdc("R{R=10}(R{R=500}W{Y=4e-4})(R{R=200}C{C=1e-9})")
+        exact = dict(circuit.get_subcircuit_impedances(self.frequencies))
+        offset = dict(
+            circuit.get_subcircuit_impedances(
+                self.frequencies,
+                offset="cumulative_dc",
+            )
+        )
+        self.assertTrue(allclose(offset["(R_3C_1)"], exact["(R_3C_1)"] + 10))
+        self.assertTrue(allclose(offset["(R_2W_1)"], exact["(R_2W_1)"] + 210, rtol=1e-3))
+        self.assertEqual(
+            [label for label, _ in circuit.get_subcircuit_impedances(self.frequencies, sort=True)],
+            ["R_1", "(R_3C_1)", "(R_2W_1)"],
+        )
+
+    def test_peak_offset(self):
+        circuit = self.result.circuit
+        Z_circuit: ComplexImpedances = circuit.get_impedances(self.frequencies)
+        exact = dict(circuit.get_subcircuit_impedances(self.frequencies))
+        offset = dict(circuit.get_subcircuit_impedances(self.frequencies, offset="peak"))
+        self.assertEqual(list(offset.keys()), ["(R_2C_1)", "(R_3W_1)"])
+        for label, Z in offset.items():
+            # The offset is a constant that only affects the real part
+            delta = Z - exact[label]
+            self.assertTrue(allclose(delta, delta[0]))
+            self.assertTrue(allclose(delta.imag, 0.0))
+            # The apex of the arc lines up with the impedance of the whole circuit
+            i = abs(exact[label].imag).argmax()
+            self.assertAlmostEqual(Z[i].real, Z_circuit[i].real)
+
+    def test_offsets_without_peaks(self):
+        for cdc in ("(RC)W", "RW", "(RQ)L"):
+            circuit = parse_cdc(cdc)
+            for offset in ("cumulative_dc", "peak"):
+                for _, Z in circuit.get_subcircuit_impedances(self.frequencies, offset=offset):
+                    self.assertTrue(isfinite(Z).all(), (cdc, offset))
+
+    def test_dc_resistance(self):
+        from pyimpspec.circuit.circuit import _get_dc_resistance
+
+        for cdc, R in (
+            ("(R{R=250}Q{Y=1e-5,n=0.8})", 250.0),
+            ("(R{R=500}W{Y=4e-4})", 500.0),
+            ("C", 0.0),
+        ):
+            item = list(parse_cdc(cdc))[0]
+            self.assertAlmostEqual(_get_dc_resistance(item, self.frequencies), R, delta=R * 1e-3 + 1e-9)
+        # No finite limit: the real part at the lowest frequency
+        item = list(parse_cdc("W"))[0]
+        f_min = min(self.frequencies)
+        self.assertAlmostEqual(
+            _get_dc_resistance(item, self.frequencies),
+            item.get_impedances(array([f_min]))[0].real,
+        )
+
     def test_invalid_offset(self):
         with self.assertRaises(ValueError):
             self.result.circuit.get_subcircuit_impedances(self.frequencies, offset="invalid")
@@ -656,6 +731,21 @@ class SubcircuitContributions(TestCase):
         for line in axes[0].lines:
             self.assertGreaterEqual(min(line.get_xdata()), Rs - 1e-6)
         check_mpl_return_values(self, figure, axes)
+
+    def test_other_offsets(self):
+        for offset in ("cumulative_dc", "peak"):
+            figure, axes = mpl.plot_subcircuits(self.result, offset=offset)
+            self.assertEqual(self.get_axis_artists(axes[0]), 2)
+            check_mpl_return_values(self, figure, axes)
+            check_mpl_return_values(
+                self,
+                *mpl.plot_fit(
+                    self.result,
+                    data=DATA,
+                    subcircuits=True,
+                    subcircuit_offset=offset,
+                ),
+            )
 
     def test_invalid_arguments(self):
         with self.assertRaises(ValueError):
