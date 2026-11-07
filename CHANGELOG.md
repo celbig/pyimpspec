@@ -5,6 +5,7 @@
   - **The results of circuits containing `Ls` change** (simulations, fits, etc.) whenever `R_r` is not equal to 1.
   - Values of `d` obtained with previous versions correspond to `d*R_r` in the corrected model (the other parameters are unaffected).
 - Added the `parse_mdl` function for importing equivalent circuits from ZView `.mdl` files.
+  - Parameter limits are widened when a value in the `.mdl` file is outside of the default limits (e.g., negative resistances or capacitances), so that such circuits can be serialized and parsed again.
 - Added `pyimpspec.mpl.plot_subcircuits` for plotting the contribution of each component of a circuit's top-level series connection in a Nyquist plot.
 - Added the `subcircuits` and `subcircuit_offset` parameters to `pyimpspec.mpl.plot_fit`.
 - Added the `Circuit.get_subcircuit_impedances` method for calculating the impedance contributed by each component of a circuit's top-level series connection.

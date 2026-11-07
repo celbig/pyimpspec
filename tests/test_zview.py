@@ -37,6 +37,7 @@ from numpy import (
 from pyimpspec import (
     Circuit,
     Element,
+    parse_cdc,
     parse_mdl,
 )
 from pyimpspec.exceptions import ParsingError
@@ -186,3 +187,28 @@ class TestZView(TestCase):
 
         with self.assertWarnsRegex(UserWarning, "default value"):
             _parse(_model([(21, "Ws1", [(0, "R", "0", 0), (1, "T", "1", 0), (2, "P", "0,5", 0)])]))
+
+    def test_out_of_range_values(self):
+        # ZView allows, e.g., negative resistances and capacitances or Y0 = 0 for a Gerischer.
+        circuit: Circuit = _parse(
+            _model(
+                [
+                    (1, "R1", [(0, "R", "-0,1", 0)]),
+                    (2, "C1", [(1, "T", "-10", 0)]),
+                    (12, "GE1", [(1, "T", "0", 0), (2, "P", "1", 0)]),
+                    (11, "CPE1", [(1, "T", "1E-3", 0), (2, "P", "1,2", 0)]),
+                ]
+            )
+        )
+        elements: Dict[str, Element] = _elements(circuit)
+        self.assertEqual(elements["R1"].get_value("R"), -0.1)
+        self.assertEqual(elements["R1"].get_lower_limit("R"), -float("inf"))
+        self.assertEqual(elements["C1"].get_value("C"), -10.0)
+        self.assertEqual(elements["C1"].get_lower_limit("C"), -float("inf"))
+        self.assertEqual(elements["GE1"].get_value("Y"), 0.0)
+        self.assertEqual(elements["GE1"].get_lower_limit("Y"), 0.0)
+        self.assertEqual(elements["CPE1"].get_value("n"), 1.2)
+        self.assertEqual(elements["CPE1"].get_upper_limit("n"), float("inf"))
+
+        # The circuit must survive a round trip through a CDC (e.g., when used in DearEIS).
+        self.assertEqual(parse_cdc(circuit.serialize()).serialize(), circuit.serialize())
