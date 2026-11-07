@@ -40,6 +40,7 @@ from warnings import warn
 from numpy import (
     errstate,
     float64,
+    inf,
     isfinite,
     sqrt,
 )
@@ -262,6 +263,17 @@ def _create(
 
     element.set_values(**values)
     element.set_fixed(**fixed)
+
+    # ZView allows values outside of the default limits of pyimpspec (e.g., negative
+    # resistances or a Gerischer with Y0 = 0). The limits are widened so that the
+    # value is kept and the circuit can be serialized and parsed again.
+    lower_limits: Dict[str, float] = element.get_lower_limits()
+    upper_limits: Dict[str, float] = element.get_upper_limits()
+    for key, value in values.items():
+        if value < lower_limits[key]:
+            element.set_lower_limits(**{key: 0.0 if value >= 0.0 else -inf})
+        if value > upper_limits[key]:
+            element.set_upper_limits(**{key: inf})
 
     # Coupled parameters can only be fixed if all of their dependencies are fixed,
     # which may result in more free parameters than in ZView.
