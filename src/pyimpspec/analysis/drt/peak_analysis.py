@@ -29,6 +29,10 @@ from abc import (
 )
 from pyimpspec.progress import Progress
 from dataclasses import dataclass
+from warnings import (
+    catch_warnings,
+    simplefilter,
+)
 from scipy.signal import (
     find_peaks,
     peak_widths,
@@ -47,6 +51,7 @@ from numpy import (
     diff,
     exp,
     float64,
+    gradient,
     isclose,
     linspace,
     log as ln,
@@ -712,8 +717,86 @@ def _detect_peaks(
     if num_peaks > 0:
         indices.sort(key=lambda i: y[i], reverse=True)
         indices = indices[:num_peaks]
+        if len(indices) < num_peaks:
+            # Overlapping peaks may not produce distinct local maxima, so
+            # the requested number of peaks is reached by adding shoulders
+            # and, if necessary, positions in the largest gaps.
+            indices = _add_peak_candidates(y, indices, num_peaks)
 
     indices.sort(key=lambda i: x[i])
+
+    return indices
+
+
+def _add_peak_candidates(
+    y: NDArray[float64],
+    indices: List[int],
+    num_peaks: int,
+) -> List[int]:
+    indices = list(indices)
+    if y.size < 3 or num_peaks <= len(indices):
+        return indices
+
+    y_max: float64 = max(y)
+    threshold: float64 = 0.01 * y_max if y_max > 0.0 else 0.0
+    min_separation: int = 2
+
+    def is_separated(i: int) -> bool:
+        return all(abs(i - j) > min_separation for j in indices)
+
+    # Shoulders correspond to local minima of the second derivative.
+    d2y: NDArray[float64] = gradient(gradient(y))
+    d2y_ext: NDArray[float64] = zeros(len(d2y) + 2, dtype=float64)
+    d2y_ext[1:-1] = -d2y
+    d2y_ext[0] = d2y_ext[-1] = min(d2y_ext[1:-1])
+    candidates: List[int] = [
+        int(i) - 1
+        for i in find_peaks(d2y_ext)[0]
+        if d2y[int(i) - 1] < 0.0 and y[int(i) - 1] > threshold
+    ]
+    candidates.sort(key=lambda i: y[i], reverse=True)
+
+    i: int
+    for i in candidates:
+        if len(indices) >= num_peaks:
+            break
+        elif is_separated(i):
+            indices.append(i)
+
+    # Fall back to the middle of the largest gaps within the region where
+    # the distribution is non-negligible.
+    support: List[int] = [int(i) for i in argwhere(y > threshold).flatten()]
+    if len(support) == 0:
+        support = list(range(0, y.size))
+
+    first: int = support[0]
+    last: int = support[-1]
+    while len(indices) < num_peaks:
+        bounds: List[int] = sorted(set([first, last] + indices))
+        gaps: List[Tuple[int, int]] = sorted(
+            zip(bounds[:-1], bounds[1:]),
+            key=lambda t: t[1] - t[0],
+            reverse=True,
+        )
+        new: Optional[int] = None
+        lo: int
+        hi: int
+        for lo, hi in gaps:
+            mid: int = (lo + hi) // 2
+            if mid not in indices and lo < mid < hi:
+                new = mid
+                break
+
+        if new is None:
+            # No room left between the existing positions.
+            new = next(
+                (j for j in range(0, y.size) if j not in indices),
+                None,
+            )
+            if new is None:
+                break
+
+        indices.append(new)
 
     return indices
 
@@ -997,7 +1080,8 @@ def analyze_drt_peaks(
         Must have the same shape as ``time_constants``.
 
     num_peaks: int, optional
-        If greater than zero, then analyze only that number of peaks (sorted from highest to lowest gamma values).
+        If greater than zero, then analyze exactly that number of peaks.
+        The highest local maxima are used first and, if there are fewer local maxima than requested (e.g., overlapping peaks), then shoulders are added as additional peaks.
         Ignored if ``peak_positions`` is provided and not empty.
 
     peak_positions: Optional[Union[List[float], NDArray[float64]]], optional
@@ -1081,7 +1165,10 @@ def _generate_parameters_physical(
     k: int
     i: int
     for k, i in enumerate(indices):
-        widths = peak_widths(y_ext, [i + 1], rel_height=0.5)[0]
+        with catch_warnings():
+            # Added candidates (e.g., shoulders) are not necessarily local maxima.
+            simplefilter("ignore")
+            widths = peak_widths(y_ext, [i + 1], rel_height=0.5)[0]
         fwhm: float64 = max(float(widths[0]) * du, 3 * du)
         height: float64 = y[i]
 

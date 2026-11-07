@@ -248,7 +248,7 @@ class DRTResult(ABC):
         Parameters
         ----------
         num_peaks: int, optional
-            If greater than zero, then analyze only that number of peaks (sorted from highest to lowest gamma values).
+            If greater than zero, then analyze exactly that number of peaks (shoulders are added if there are fewer local maxima than requested).
 
         peak_positions: Optional[Union[List[float], NDArray[float64]]], optional
             Analyze only the peaks at the provided positions.
