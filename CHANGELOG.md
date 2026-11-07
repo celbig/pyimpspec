@@ -1,4 +1,4 @@
-# Unreleased
+# 5.3.0 (2026/11/07)
 
 - Fixed parsing of ZPlotLab (e.g., ModuLab) `.z` files that have a header block.
 - Fixed a bug in the impedance calculation of the de Levie element (`Ls`, `DeLevieFiniteLength`), which used `d*sqrt(R_i*R_r)` instead of `d*sqrt(R_i/R_r)` in the argument of the hyperbolic cotangent, contrary to the documented equation.
