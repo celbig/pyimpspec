@@ -107,9 +107,13 @@ def plot_subcircuits(
         Where each contribution is placed on the real axis.
         'none': each contribution starts from the origin and the values are exact.
         'series_resistance': the sum of the resistors in the top-level series connection (e.g., the ohmic resistance) is added to the real part of each of the other contributions and the resistors are not plotted separately.
+        'cumulative_dc': the sum of the resistors in the top-level series connection and the zero-frequency resistances of the faster components is added to the real part of each contribution.
+        'peak': the real parts of all of the other components at the characteristic frequency (e.g., the apex of an arc) of a contribution are added to the real part of that contribution.
+        See :meth:`~pyimpspec.Circuit.get_subcircuit_impedances` for more information.
 
     colors: Optional[List[str]], optional
         The colors to cycle through when plotting the contributions.
+        The colors are assigned based on the order of the components in the circuit (including the resistors that are not plotted when using an offset).
 
     linestyle: str, optional
         The style of the lines.
@@ -171,11 +175,15 @@ def plot_subcircuits(
         offset=offset,
     )
 
-    i: int
-    for i, (label, Z) in enumerate(components):
+    # The colors are based on the order of the components in the circuit so that each component
+    # keeps its color regardless of the offset (e.g., when resistors are excluded)
+    order: List[str] = [label for label, _ in circuit.get_subcircuit_impedances(frequencies)]
+
+    label: str
+    for label, Z in components:
         x = Z.real
         y = -Z.imag
-        color: str = colors[i % len(colors)]
+        color: str = colors[order.index(label) % len(colors)]
 
         if isclose(x, x[0]).all() and isclose(y, y[0]).all():
             axis.scatter(

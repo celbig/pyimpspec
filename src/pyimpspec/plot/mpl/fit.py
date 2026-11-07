@@ -130,7 +130,7 @@ def plot_fit(
         Only supported for |FitResult| instances and not when plotting admittance.
 
     subcircuit_offset: str, optional
-        Where the contributions of the components are placed on the real axis ('none' or 'series_resistance').
+        Where the contributions of the components are placed on the real axis ('none', 'series_resistance', 'cumulative_dc', or 'peak').
         See :func:`~pyimpspec.mpl.plot_subcircuits`.
 
     **kwargs

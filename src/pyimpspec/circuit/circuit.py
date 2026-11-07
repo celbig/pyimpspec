@@ -32,6 +32,16 @@ from .base import (
 from .series import Series
 from .parallel import Parallel
 from .resistor import Resistor
+from numpy import (
+    argmax,
+    array,
+    float64,
+    inf,
+    isclose,
+    isfinite,
+    logspace,
+)
+from numpy.typing import NDArray
 from sympy import (
     Expr,
     latex,
@@ -52,7 +62,46 @@ ElementParameters = Dict[str, Dict[str, str]]
 _SUBCIRCUIT_OFFSETS: Tuple[str, ...] = (
     "none",
     "series_resistance",
+    "cumulative_dc",
+    "peak",
 )
+
+
+def _get_characteristic_frequency(
+    frequencies: Frequencies,
+    impedances: ComplexImpedances,
+) -> float:
+    # The frequency where the magnitude of the imaginary part is the greatest:
+    # the apex of an arc, the low-frequency end of a diffusion tail, or the
+    # high-frequency end of an inductive tail.
+    # Frequency-independent contributions (e.g., resistors) are treated as the fastest.
+    imag: NDArray[float64] = abs(impedances.imag)
+    if not (imag.max() > 0.0):
+        return inf
+
+    return float(frequencies[argmax(imag)])
+
+
+def _get_dc_resistance(
+    item: Union[Element, Connection],
+    frequencies: Frequencies,
+) -> float:
+    # The real part of the impedance at the zero-frequency limit.
+    # Contributions without a finite limit (e.g., a semi-infinite Warburg element or a constant phase element
+    # connected in series) fall back to the real part at the lowest frequency.
+    # The real part is evaluated at decreasingly low frequencies until two consecutive decades agree.
+    # The search is limited since the impedances of some elements lose precision at extremely low frequencies.
+    f_min: float = float(min(frequencies))
+    f_low: Frequencies = f_min * logspace(-1, -14, 14)
+    R_low: NDArray[float64] = item.get_impedances(f_low).real
+    i: int
+    for i in range(1, len(R_low)):
+        if not (isfinite(R_low[i - 1]) and isfinite(R_low[i])):
+            break
+        elif isclose(R_low[i - 1], R_low[i], rtol=1e-3, atol=0.0):
+            return float(R_low[i])
+
+    return float(item.get_impedances(array([f_min], dtype=float64))[0].real)
 
 
 class Circuit:
@@ -263,6 +312,7 @@ class Circuit:
         self,
         frequencies: Frequencies,
         offset: str = "none",
+        sort: bool = False,
     ) -> List[Tuple[str, ComplexImpedances]]:
         """
         Get the label and the impedances of each component of the top-level series connection of this circuit.
@@ -275,9 +325,20 @@ class Circuit:
             The frequencies (in hertz) at which to calculate the impedances.
 
         offset: str, optional
-            Whether the resistors in the top-level series connection (e.g., the ohmic resistance) are kept as separate contributions or added to the other contributions.
-            'none': the contributions are exact and sum up to the impedance of the circuit.
-            'series_resistance': the sum of the resistors in the top-level series connection is added to the real part of each of the other contributions and the resistors are not included in the returned list.
+            Where each contribution is placed on the real axis.
+            The offsets are constant (i.e., the shapes of the contributions are preserved) and only affect the real part.
+            With the exception of 'none', the offset contributions no longer sum up to the impedance of the circuit and the resistors in the top-level series connection are not included in the returned list.
+
+            - 'none': the contributions are exact and sum up to the impedance of the circuit.
+            - 'series_resistance': the sum of the resistors in the top-level series connection (e.g., the ohmic resistance) is added to the real part of each of the other contributions.
+            - 'cumulative_dc': the sum of the resistors in the top-level series connection and the zero-frequency resistances of the faster components (i.e., those with higher characteristic frequencies) is added to the real part of each contribution. Each contribution thus starts where it would start if the time constants were well separated. The real part at the lowest frequency is used for components without a finite zero-frequency limit (e.g., a semi-infinite Warburg element).
+            - 'peak': the real parts of all of the other components (including resistors) at the characteristic frequency of a contribution are added to the real part of that contribution. The apex of each arc is thus placed at the same real value as the impedance of the whole circuit at that frequency, even when the arcs overlap.
+
+            The characteristic frequency of a component is the frequency where the magnitude of the imaginary part of its impedance is the greatest (e.g., the apex of an arc).
+
+        sort: bool, optional
+            Sort the components from the fastest to the slowest (i.e., by decreasing characteristic frequency) instead of keeping the order of the circuit.
+            Frequency-independent components (e.g., resistors) are placed first.
 
         Returns
         -------
@@ -287,26 +348,70 @@ class Circuit:
             raise ValueError(f"Expected one of {_SUBCIRCUIT_OFFSETS} instead of {offset=}")
 
         identifiers: Dict[Element, int] = self.generate_element_identifiers(running=False)
-        components: List[Tuple[str, Union[Element, Connection]]] = [
-            (self._get_component_label(item, identifiers), item) for item in self
-        ]
+        labels: List[str] = []
+        items: List[Union[Element, Connection]] = []
+        impedances: List[ComplexImpedances] = []
+        for item in self:
+            labels.append(self._get_component_label(item, identifiers))
+            items.append(item)
+            impedances.append(item.get_impedances(frequencies))
 
-        series_resistance: float = 0.0
-        if offset == "series_resistance":
-            series_resistance = sum(
+        characteristic_frequencies: List[float] = [
+            _get_characteristic_frequency(frequencies, Z) for Z in impedances
+        ]
+        is_resistor: List[bool] = [isinstance(item, Resistor) for item in items]
+
+        offsets: List[float] = [0.0] * len(items)
+        if offset != "none":
+            series_resistance: float = sum(
                 item.get_values()["R"]
-                for _, item in components
-                if isinstance(item, Resistor)
+                for item, resistor in zip(items, is_resistor)
+                if resistor
             )
-            components = [
-                (label, item)
-                for label, item in components
-                if not isinstance(item, Resistor)
-            ]
+
+            i: int
+            j: int
+            for i in range(len(items)):
+                if is_resistor[i]:
+                    continue
+
+                if offset == "series_resistance":
+                    offsets[i] = series_resistance
+                elif offset == "cumulative_dc":
+                    offsets[i] = series_resistance + sum(
+                        _get_dc_resistance(items[j], frequencies)
+                        for j in range(len(items))
+                        if not is_resistor[j]
+                        and j != i
+                        and (
+                            characteristic_frequencies[j] > characteristic_frequencies[i]
+                            or (
+                                characteristic_frequencies[j] == characteristic_frequencies[i]
+                                and j < i
+                            )
+                        )
+                    )
+                elif offset == "peak":
+                    f_k: float = characteristic_frequencies[i]
+                    if not isfinite(f_k):
+                        f_k = float(min(frequencies))
+
+                    f_peak: Frequencies = array([f_k], dtype=float64)
+                    offsets[i] = sum(
+                        float(items[j].get_impedances(f_peak)[0].real)
+                        for j in range(len(items))
+                        if j != i
+                    )
+
+        indices: List[int] = list(range(len(items)))
+        if sort:
+            # Python's sort is stable so the order of the circuit is kept for ties
+            indices.sort(key=lambda i: -characteristic_frequencies[i])
 
         return [
-            (label, item.get_impedances(frequencies) + series_resistance)
-            for label, item in components
+            (labels[i], impedances[i] + offsets[i])
+            for i in indices
+            if offset == "none" or not is_resistor[i]
         ]
 
     def _get_component_label(
