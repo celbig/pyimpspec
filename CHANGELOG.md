@@ -1,4 +1,4 @@
-# 5.3.0 (2026/10/29)
+# 5.3.0 (2026/11/07)
 
 - Fixed parsing of ZPlotLab (e.g., ModuLab) `.z` files that have a header block.
 - Fixed a bug in the impedance calculation of the de Levie element (`Ls`, `DeLevieFiniteLength`), which used `d*sqrt(R_i*R_r)` instead of `d*sqrt(R_i/R_r)` in the argument of the hyperbolic cotangent, contrary to the documented equation.
@@ -9,6 +9,8 @@
 - Added `pyimpspec.mpl.plot_subcircuits` for plotting the contribution of each component of a circuit's top-level series connection in a Nyquist plot.
 - Added the `subcircuits` and `subcircuit_offset` parameters to `pyimpspec.mpl.plot_fit`.
 - Added the `Circuit.get_subcircuit_impedances` method for calculating the impedance contributed by each component of a circuit's top-level series connection.
+  - The `offset` argument supports `"none"`, `"series_resistance"`, `"cumulative_dc"` (the series resistance plus the zero-frequency resistances of the faster components), and `"peak"` (the real parts of the other components at the characteristic frequency of each contribution, which aligns the apex of each arc with the impedance of the circuit).
+  - The `sort` argument sorts the components from the fastest to the slowest.
 - `pyimpspec.mpl.plot_subcircuits` and `pyimpspec.mpl.plot_fit` (when plotting subcircuits) now also accept fit results that are not instances of `FitResult` as long as they have a `circuit` attribute and a `get_frequencies` method.
 - Added support for additional peak shapes when analyzing the peaks of DRT results (inspired by pyDRTtools):
   - Added `shape` and `global_optimization` arguments to the `analyze_peaks` methods. The `shape` can be `"skew-normal"` (default), `"gaussian"`, `"zarc"`, or `"havriliak-negami"`.
