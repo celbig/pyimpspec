@@ -26,6 +26,15 @@ Functions and classes related to peak analysis
 Method functions and classes
 ----------------------------
 
+Bayesian (bayes-drt2) method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: pyimpspec.analysis.drt
+   :members: calculate_drt_bayes_drt2
+
+.. automodule:: pyimpspec.analysis.drt
+   :members: BayesDRT2Result
+
+
 BHT method
 ~~~~~~~~~~
 .. automodule:: pyimpspec.analysis.drt

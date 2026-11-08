@@ -540,6 +540,22 @@ class TestDRT(TestCase):
         self.wrapper(method=method, mode="imaginary")
         self.wrapper(method=method, mode="real", lambda_value=1e-3)
 
+    def test_method_bayes_drt2(self):
+        from importlib.util import find_spec
+
+        method: str = "bayes-drt2"
+        self.assertRaises(ValueError, self.wrapper, method=method, mode="crivens")
+        self.assertRaises(ValueError, self.wrapper, method=method, low_frequency_prior="crivens")
+        self.assertRaises(ValueError, self.wrapper, method=method, cutoff_frequency=-1.0)
+
+        if find_spec("bayes_drt2") is None or find_spec("cmdstanpy") is None:
+            self.skipTest("bayes_drt2 and cmdstanpy are not installed")
+
+        drt = self.wrapper(method=method)
+        self.assertEqual(drt.get_drt_data()[0].shape, drt.get_drt_data()[1].shape)
+        self.assertEqual(drt.get_drt_credible_intervals_data()[0].size, 0)
+        self.wrapper(method=method, cutoff_frequency=0.01, low_frequency_prior="negative")
+
     def test_method_tr_rbf(self):
         method: str = "tr-rbf"
         self.assertRaises(
