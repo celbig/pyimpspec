@@ -40,6 +40,7 @@ from pyimpspec import (
     parse_cdc,
     parse_mdl,
 )
+from pyimpspec.circuit.elements import Gerischer
 from pyimpspec.exceptions import ParsingError
 
 
@@ -190,23 +191,25 @@ class TestZView(TestCase):
 
     def test_out_of_range_values(self):
         # ZView allows, e.g., negative resistances and capacitances or Y0 = 0 for a Gerischer.
-        circuit: Circuit = _parse(
-            _model(
-                [
-                    (1, "R1", [(0, "R", "-0,1", 0)]),
-                    (2, "C1", [(1, "T", "-10", 0)]),
-                    (12, "GE1", [(1, "T", "0", 0), (2, "P", "1", 0)]),
-                    (11, "CPE1", [(1, "T", "1E-3", 0), (2, "P", "1,2", 0)]),
-                ]
+        with self.assertWarnsRegex(UserWarning, "infinite impedance"):
+            circuit: Circuit = _parse(
+                _model(
+                    [
+                        (1, "R1", [(0, "R", "-0,1", 0)]),
+                        (2, "C1", [(1, "T", "-10", 0)]),
+                        (12, "GE1", [(1, "T", "0", 0), (2, "P", "1", 0)]),
+                        (11, "CPE1", [(1, "T", "1E-3", 0), (2, "P", "1,2", 0)]),
+                    ]
+                )
             )
-        )
         elements: Dict[str, Element] = _elements(circuit)
         self.assertEqual(elements["R1"].get_value("R"), -0.1)
         self.assertEqual(elements["R1"].get_lower_limit("R"), -float("inf"))
         self.assertEqual(elements["C1"].get_value("C"), -10.0)
         self.assertEqual(elements["C1"].get_lower_limit("C"), -float("inf"))
-        self.assertEqual(elements["GE1"].get_value("Y"), 0.0)
-        self.assertEqual(elements["GE1"].get_lower_limit("Y"), 0.0)
+        # Y0 = 0 results in an infinite impedance, so the default values are used.
+        self.assertEqual(elements["GE1"].get_value("Y"), Gerischer.get_default_values()["Y"])
+        self.assertEqual(elements["GE1"].get_value("k"), 1.0)
         self.assertEqual(elements["CPE1"].get_value("n"), 1.2)
         self.assertEqual(elements["CPE1"].get_upper_limit("n"), float("inf"))
 

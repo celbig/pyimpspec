@@ -42,6 +42,7 @@ from numpy import (
     float64,
     inf,
     isfinite,
+    logspace,
     sqrt,
 )
 from pyimpspec.circuit.base import (
@@ -63,7 +64,9 @@ from pyimpspec.circuit.parallel import Parallel
 from pyimpspec.circuit.series import Series
 from pyimpspec.exceptions import (
     ConnectionWithoutElements,
+    InfiniteImpedance,
     InsufficientElementsInParallelConnection,
+    NotANumberImpedance,
     ParsingError,
 )
 
@@ -91,6 +94,8 @@ _UNSUPPORTED_ELEMENTS: Dict[int, str] = {
     100: "distributed element (DE)",
     200: "extended distributed element (DX)",
 }
+
+_TEST_FREQUENCIES = logspace(-2, 6, 9)
 
 _BEGIN_MODEL: Pattern = compile_regex(r"^\s*Begin Circuit Model:\s*(\d+)\s*$")
 _END_MODEL: Pattern = compile_regex(r"^\s*End Circuit Model:\s*(\d+)\s*$")
@@ -263,6 +268,23 @@ def _create(
 
     element.set_values(**values)
     element.set_fixed(**fixed)
+
+    # Some values (e.g., Y0 = 0 for a Gerischer) result in an infinite impedance,
+    # which makes the circuit impossible to simulate or fit. The default values
+    # of the element are used instead.
+    is_finite: bool = True
+    try:
+        with errstate(divide="ignore", invalid="ignore", over="ignore"):
+            is_finite = bool(isfinite(element.get_impedances(_TEST_FREQUENCIES)).all())
+    except (InfiniteImpedance, NotANumberImpedance):
+        is_finite = False
+
+    if not is_finite:
+        warn(
+            f"The converted {mdl} has an infinite impedance! Using the default values instead."
+        )
+        values = {}
+        element.set_values(**Class.get_default_values())
 
     # ZView allows values outside of the default limits of pyimpspec (e.g., negative
     # resistances or a Gerischer with Y0 = 0). The limits are widened so that the
