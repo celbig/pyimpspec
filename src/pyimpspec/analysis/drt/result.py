@@ -241,6 +241,7 @@ class DRTResult(ABC):
         disallow_skew: bool = False,
         shape: str = "skew-normal",
         global_optimization: bool = False,
+        allow_negative: bool = False,
     ) -> DRTPeaks:
         """
         Analyze the peaks present in a distribution of relaxation times using skew normal distributions.
@@ -265,6 +266,9 @@ class DRTResult(ABC):
             If true, then a global search (differential evolution) is performed before the local least-squares refinement.
             This is slower but more robust when peaks overlap.
 
+        allow_negative: bool, optional
+            If true, then negative peaks are also detected and deconvoluted.
+
         Returns
         -------
         |DRTPeaks|
@@ -288,6 +292,7 @@ class DRTResult(ABC):
             disallow_skew=disallow_skew,
             shape=shape,
             global_optimization=global_optimization,
+            allow_negative=allow_negative,
         )
         object.__setattr__(self, "_peak_analysis", peaks)
 
