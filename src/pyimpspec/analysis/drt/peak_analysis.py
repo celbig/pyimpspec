@@ -383,15 +383,17 @@ class _PhysicalDRTPeak(BaseDRTPeak):
 
         u0: float64 = ln(self.tau)
         u = linspace(u0 - 30.0, u0 + 30.0, 6001)
-        i: int = int(argmax(self._get_gamma(u)))
+        # Peaks with a negative area have a minimum instead of a maximum.
+        direction: float = -1.0 if self.R < 0.0 else 1.0
+        i: int = int(argmax(direction * self._get_gamma(u)))
         result = minimize_scalar(
-            lambda _: -self._get_gamma(_),
+            lambda _: -direction * self._get_gamma(_),
             bounds=(u[max(i - 1, 0)], u[min(i + 1, u.size - 1)]),
             method="bounded",
             options=dict(xatol=1e-10),
         )
 
-        return (exp(result.x), -result.fun)
+        return (exp(result.x), direction * -result.fun)
 
     def get_time_constant(self) -> float64:
         return self._find_maximum()[0]
@@ -698,8 +700,11 @@ def _detect_peaks(
     y: NDArray[float64],
     num_peaks: int,
     peak_positions: Optional[Union[List[float], NDArray[float64]]],
+    allow_negative: bool = False,
 ) -> List[int]:
     # Returns the indices of the peaks to analyze.
+    # If negative peaks are allowed, then local minima (with negative values)
+    # are detected in addition to local maxima.
     indices: List[int] = []
 
     if peak_positions is not None and len(peak_positions) > 0:
@@ -713,6 +718,16 @@ def _detect_peaks(
     y_ext[1:-1] += y
 
     indices = [int(i) - 1 for i in find_peaks(y_ext)[0]]
+    if allow_negative:
+        indices.extend(
+            [
+                int(i) - 1
+                for i in find_peaks(-y_ext)[0]
+                if y[int(i) - 1] < 0.0
+            ]
+        )
+        indices = [i for i in indices if y[i] != 0.0]
+        y = abs(y)
 
     if num_peaks > 0:
         indices.sort(key=lambda i: y[i], reverse=True)
@@ -846,6 +861,7 @@ def _fit_parameters(
 def _generate_parameters(
     peaks: List[Tuple[float64, float64]],
     disallow_skew: bool,
+    allow_negative: bool = False,
 ) -> Tuple["Parameters", int]:  # noqa: F821
     from lmfit.parameter import Parameters
 
@@ -863,8 +879,8 @@ def _generate_parameters(
         parameters.add(
             name=f"h_{i}",
             value=y,
-            min=0.0,
-            max=2.0,
+            min=-2.0 if allow_negative and y < 0.0 else 0.0,
+            max=0.0 if allow_negative and y < 0.0 else 2.0,
         )
 
         assert 0.0 <= x <= 1.0
@@ -912,6 +928,7 @@ def _analyze_peaks(
     suffix: str = "",
     shape: str = "skew-normal",
     global_optimization: bool = False,
+    allow_negative: bool = False,
 ) -> DRTPeaks:
     from lmfit.minimizer import MinimizerResult
     from lmfit.parameter import Parameters
@@ -942,6 +959,8 @@ def _analyze_peaks(
         raise ValueError(f"Expected one of {_PEAK_SHAPES} instead of {shape=}")
     elif not _is_boolean(global_optimization):
         raise TypeError(f"Expected a boolean instead of {global_optimization=}")
+    elif not _is_boolean(allow_negative):
+        raise TypeError(f"Expected a boolean instead of {allow_negative=}")
 
     if allclose(gammas, 0.0):
         return DRTPeaks(
@@ -960,6 +979,7 @@ def _analyze_peaks(
             suffix=suffix,
             shape=shape,
             global_optimization=global_optimization,
+            allow_negative=allow_negative,
         )
 
     prog: Progress
@@ -977,11 +997,15 @@ def _analyze_peaks(
         prog.increment()
 
         y: NDArray[float64] = copy(gammas)
-        indices: Indices = argwhere(y < 0.0).flatten()
-        y[indices] = 0.0
-        y_offset: float64 = min(y)
-        y = y - y_offset
-        y_scale: float64 = max(y)
+        if allow_negative:
+            y_offset: float64 = float64(0.0)
+            y_scale: float64 = max(abs(y))
+        else:
+            indices: Indices = argwhere(y < 0.0).flatten()
+            y[indices] = 0.0
+            y_offset = min(y)
+            y = y - y_offset
+            y_scale = max(y)
         if y_scale <= 0.0:
             return DRTPeaks(
                 time_constants=time_constants,
@@ -990,8 +1014,11 @@ def _analyze_peaks(
                 shape=shape,
             )
         y /= y_scale
-        assert isclose(min(y), 0.0), min(y)
-        assert isclose(max(y), 1.0), max(y)
+        if allow_negative:
+            assert isclose(max(abs(y)), 1.0), max(abs(y))
+        else:
+            assert isclose(min(y), 0.0), min(y)
+            assert isclose(max(y), 1.0), max(y)
         prog.increment()
 
         prog.set_message("Detecting peaks")
@@ -1004,6 +1031,7 @@ def _analyze_peaks(
                 y,
                 num_peaks,
                 peak_positions,
+                allow_negative,
             )
         ]
 
@@ -1012,15 +1040,17 @@ def _analyze_peaks(
         parameters, num_variables = _generate_parameters(
             peaks,
             disallow_skew=disallow_skew,
+            allow_negative=allow_negative,
         )
         if num_peaks < 1 and peak_positions is None:
             while len(peaks) > 1 and num_variables > x.size:
-                peaks.sort(key=lambda t: t[1], reverse=True)
+                peaks.sort(key=lambda t: abs(t[1]), reverse=True)
                 peaks.pop()
                 peaks.sort(key=lambda t: t[0])
                 parameters, num_variables = _generate_parameters(
                     peaks,
                     disallow_skew=disallow_skew,
+                    allow_negative=allow_negative,
                 )
 
         prog.increment()
@@ -1065,6 +1095,7 @@ def analyze_drt_peaks(
     shape: str = "skew-normal",
     global_optimization: bool = False,
     suffix: str = "",
+    allow_negative: bool = False,
 ) -> DRTPeaks:
     """
     Analyze the peaks present in a distribution of relaxation times that is defined by arrays of time constants and gamma values.
@@ -1104,10 +1135,15 @@ def analyze_drt_peaks(
     suffix: str, optional
         The suffix used in the labels when plotting the results.
 
+    allow_negative: bool, optional
+        If true, then negative peaks (local minima with negative gamma values) are also detected and deconvoluted.
+        Negative peaks have negative heights and areas (resistances).
+        Otherwise, negative gamma values are ignored.
+
     Returns
     -------
     |DRTPeaks|
-        If the gamma values contain no positive values, then no peaks are found.
+        If the gamma values contain no positive values (or no values at all if ``allow_negative`` is true), then no peaks are found.
 
     Raises
     ------
@@ -1126,6 +1162,7 @@ def analyze_drt_peaks(
         suffix=suffix,
         shape=shape,
         global_optimization=global_optimization,
+        allow_negative=allow_negative,
     )
 
 
@@ -1148,6 +1185,7 @@ def _generate_parameters_physical(
     indices: List[int],
     u: NDArray[float64],
     y: NDArray[float64],
+    allow_negative: bool = False,
 ) -> "Parameters":  # noqa: F821
     from lmfit.parameter import Parameters
 
@@ -1155,10 +1193,10 @@ def _generate_parameters_physical(
         raise ValueError("Expected to have at least one peak to analyze!")
 
     du: float64 = mean(diff(u))
-    total_area: float64 = trapezoid(y, u)
+    total_area: float64 = trapezoid(abs(y), u)
 
     y_ext: NDArray[float64] = zeros(len(y) + 2, dtype=float64)
-    y_ext[1:-1] = y
+    y_ext[1:-1] = abs(y)
 
     parameters: Parameters = Parameters()
 
@@ -1170,13 +1208,15 @@ def _generate_parameters_physical(
             simplefilter("ignore")
             widths = peak_widths(y_ext, [i + 1], rel_height=0.5)[0]
         fwhm: float64 = max(float(widths[0]) * du, 3 * du)
-        height: float64 = y[i]
+        height: float64 = abs(y[i])
+        negative: bool = allow_negative and y[i] < 0.0
+        sgn: float = -1.0 if negative else 1.0
 
         parameters.add(
             name=f"R_{k}",
-            value=min(height * fwhm * 1.0645, 1.5 * total_area),
-            min=0.0,
-            max=2.0 * total_area,
+            value=sgn * min(height * fwhm * 1.0645, 1.5 * total_area),
+            min=-2.0 * total_area if negative else 0.0,
+            max=0.0 if negative else 2.0 * total_area,
         )
         parameters.add(
             name=f"u_{k}",
@@ -1248,6 +1288,7 @@ def _analyze_peaks_physical(
     suffix: str,
     shape: str,
     global_optimization: bool,
+    allow_negative: bool = False,
 ) -> DRTPeaks:
     from lmfit.minimizer import MinimizerResult
 
@@ -1260,8 +1301,11 @@ def _analyze_peaks_physical(
     ) as prog:
         u: NDArray[float64] = ln(time_constants)
         y: NDArray[float64] = copy(gammas)
-        y[y < 0.0] = 0.0
-        y_scale: float64 = max(y)
+        if allow_negative:
+            y_scale: float64 = max(abs(y))
+        else:
+            y[y < 0.0] = 0.0
+            y_scale = max(y)
         if y_scale <= 0.0:
             return DRTPeaks(
                 time_constants=time_constants,
@@ -1279,10 +1323,11 @@ def _analyze_peaks_physical(
             y,
             num_peaks,
             peak_positions,
+            allow_negative,
         )
         if num_peaks < 1 and peak_positions is None:
             while len(indices) > 1 and len(indices) * num_params > u.size:
-                indices.remove(min(indices, key=lambda i: y[i]))
+                indices.remove(min(indices, key=lambda i: abs(y[i])))
 
         if len(indices) < 1:
             return DRTPeaks(
@@ -1297,6 +1342,7 @@ def _analyze_peaks_physical(
             indices,
             u,
             y,
+            allow_negative,
         )
         prog.increment()
 

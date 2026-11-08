@@ -1038,6 +1038,63 @@ class TestDRT(TestCase):
         self.assertEqual(peaks.suffix, "foo")
         self.assertIn("foo", peaks.to_peaks_dataframe().columns[0])
 
+    def test_analyze_drt_peaks_negative(self):
+        from numpy import (
+            log as ln,
+            logspace,
+        )
+        from pyimpspec.analysis.drt.peak_analysis import _gaussian
+
+        time_constants = logspace(-6, 2, 160)
+        u = ln(time_constants)
+        gammas = (
+            _gaussian(u, 10.0, ln(1e-4), 0.8)
+            + _gaussian(u, -4.0, ln(1e-1), 0.7)
+            + _gaussian(u, 6.0, ln(1e0), 0.6)
+        )
+
+        shape: str
+        for shape in _PEAK_SHAPES:
+            default = analyze_drt_peaks(time_constants, gammas, shape=shape)
+            self.assertEqual(default.get_num_peaks(), 2, msg=shape)
+            self.assertTrue(
+                all(_.get_height() > 0.0 for _ in default.peaks),
+                msg=shape,
+            )
+
+            peaks = analyze_drt_peaks(
+                time_constants,
+                gammas,
+                shape=shape,
+                allow_negative=True,
+            )
+            self.assertEqual(peaks.get_num_peaks(), 3, msg=shape)
+            heights = [_.get_height() for _ in peaks.peaks]
+            areas = [peaks.get_peak_area(i) for i in range(0, 3)]
+            self.assertEqual([_ < 0.0 for _ in heights], [False, True, False], msg=shape)
+            self.assertEqual([_ < 0.0 for _ in areas], [False, True, False], msg=shape)
+            taus = [_.get_time_constant() for _ in peaks.peaks]
+            self.assertTrue(isclose(taus[1], 1e-1, rtol=0.3), msg=shape)
+            if shape in ("skew-normal", "gaussian"):
+                self.assertTrue(
+                    allclose(peaks.get_gammas(num_per_decade=0), gammas, atol=0.1),
+                    msg=shape,
+                )
+
+        peaks = analyze_drt_peaks(
+            time_constants,
+            gammas,
+            num_peaks=2,
+            shape="gaussian",
+            allow_negative=True,
+        )
+        self.assertEqual(peaks.get_num_peaks(), 2)
+        self.assertTrue(isclose(peaks.peaks[0].R, 10.0, rtol=0.05))
+        self.assertTrue(isclose(peaks.peaks[1].R, 6.0, rtol=0.15))
+
+        with self.assertRaises(TypeError):
+            analyze_drt_peaks(time_constants, gammas, allow_negative=1)
+
     def test_analyze_drt_peaks_exact_num_peaks(self):
         # Two overlapping peaks that result in a single local maximum.
         from numpy import (
