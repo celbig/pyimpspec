@@ -18,6 +18,7 @@ The supported methods
 
 Implementations based on the following approaches are included in pyimpspec:
 
+- **Bayesian (bayes-drt2)**: A hierarchical Bayesian inversion (see `Huang et al. (2020) <https://doi.org/10.1016/j.electacta.2020.137493>`_) that is provided by the optional `bayes_drt2 <https://github.com/jdhuang-csm/bayes-drt2>`_ package, which is not bundled with pyimpspec.
 - **BHT**: The Bayesian Hilbert transform method (see `Liu et al. (2020) <https://doi.org/10.1016/j.electacta.2020.136864>`_) that was originally implemented in `DRTtools <https://github.com/ciuccislab/DRTtools>`_ and `pyDRTtools <https://github.com/ciuccislab/pyDRTtools>`_.
 - **LM**: The Loewner method (see `Mayo and Antoulas (2007) <https://doi.org/10.1016/j.laa.2007.03.008>`_, `Sorrentino et al. (2022) <http://doi.org/10.2139/ssrn.4217752>`_, `Rüther et al. (2023) <https://doi.org/10.3390/batteries9020132>`_, and `Sorrentino et al. (2023) <https://doi.org/10.1016/j.jpowsour.2023.233575>`_) that was implemented in `DRT-from-Loewner-framework <https://github.com/projectsEECandDRI/DRT-from-Loewner-framework>`_.
 - **m(RQ)fit**: The multi-(RQ)-fit method (see `Boukamp (2015) <https://doi.org/10.1016/j.electacta.2014.12.059>`_ and `Boukamp and Rolle (2017) <https://doi.org/10.1016/j.ssi.2016.10.009>`_).

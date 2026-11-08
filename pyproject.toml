@@ -77,6 +77,8 @@ pyimpspec = "pyimpspec.cli:main"
 [project.optional-dependencies]
 cvxopt = ["cvxopt >=1.3, <2"]
 kvxopt = ["kvxopt >=1.3, <2"]
+# The bayes-drt2 package is not published on PyPI and must be installed separately
+# (https://github.com/jdhuang-csm/bayes-drt2), together with CmdStan (cmdstanpy.install_cmdstan()).
 dev = [
     "setuptools==84.2.1",
     "build==1.6.1",

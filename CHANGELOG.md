@@ -1,3 +1,9 @@
+# Unreleased
+
+- Added the `"bayes-drt2"` DRT method (`calculate_drt_bayes_drt2` and `BayesDRT2Result`), a hierarchical Bayesian inversion that uses the optional `bayes_drt2` package (which also requires cmdstanpy and CmdStan and is not bundled with pyimpspec).
+  - A maximum a posteriori estimate is calculated by default. HMC sampling, which also provides 95 % credible intervals, is used when `credible_intervals=True`.
+  - The DRT can be allowed to be negative (`low_frequency_prior="free"`) or forced to be non-positive (`"negative"`) below a cut-off frequency (`cutoff_frequency`).
+
 # 5.3.0 (2026/11/07)
 
 - Fixed parsing of ZPlotLab (e.g., ModuLab) `.z` files that have a header block.

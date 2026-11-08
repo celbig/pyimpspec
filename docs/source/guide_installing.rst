@@ -45,6 +45,7 @@ These Python packages (and their dependencies) are installed automatically when 
 
 The following Python packages can be installed as optional dependencies for additional functionality:
 
+- DRT calculations using the Bayesian method (``method="bayes-drt2"``): the `bayes_drt2 <https://github.com/jdhuang-csm/bayes-drt2>`_ package, which must be installed separately, as well as cmdstanpy and CmdStan (see ``cmdstanpy.install_cmdstan()``).
 - DRT calculations using the `TR-RBF method <https://doi.org/10.1016/j.electacta.2015.09.097>`_ (at least one of the following is required):
 	- `cvxopt <https://github.com/cvxopt/cvxopt>`_
 	- `kvxopt <https://github.com/sanurielf/kvxopt>`_ (this fork of cvxopt may support additional platforms)

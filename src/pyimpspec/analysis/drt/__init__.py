@@ -38,6 +38,10 @@ from .tr_rbf import (
     TRRBFResult,
     calculate_drt_tr_rbf,
 )
+from .bayes_drt2 import (
+    BayesDRT2Result,
+    calculate_drt_bayes_drt2,
+)
 from .bht import (
     BHTResult,
     calculate_drt_bht,
@@ -53,6 +57,7 @@ from .lm import (
 
 
 _METHODS: List[str] = [
+    "bayes-drt2",
     "bht",
     "lm",
     "mrq-fit",
@@ -77,6 +82,7 @@ def calculate_drt(
     method: str, optional
         Valid values include:
 
+        - "bayes-drt2"
         - "bht"
         - "lm"
         - "mrq-fit"
@@ -108,6 +114,7 @@ def calculate_drt(
         kwargs["mode"] = "real"
 
     return {
+        "bayes-drt2": calculate_drt_bayes_drt2,
         "bht": calculate_drt_bht,
         "lm": calculate_drt_lm,
         "mrq-fit": calculate_drt_mrq_fit,
