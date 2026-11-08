@@ -1022,6 +1022,52 @@ class TestDRT(TestCase):
         self.assertEqual(peaks.suffix, "foo")
         self.assertIn("foo", peaks.to_peaks_dataframe().columns[0])
 
+    def test_analyze_drt_peaks_exact_num_peaks(self):
+        # Two overlapping peaks that result in a single local maximum.
+        from numpy import (
+            exp,
+            logspace,
+            log10,
+        )
+        from scipy.signal import find_peaks
+
+        time_constants = logspace(-6, 2, 161)
+        u = log10(time_constants)
+        gammas = (
+            1.0 * exp(-(((u + 2.0) / 0.35) ** 2))
+            + 0.5 * exp(-(((u + 1.55) / 0.35) ** 2))
+        )
+        self.assertEqual(len(find_peaks(gammas)[0]), 1)
+
+        shape: str
+        for shape in _PEAK_SHAPES:
+            num_peaks: int
+            for num_peaks in (1, 2, 3):
+                peaks = analyze_drt_peaks(
+                    time_constants,
+                    gammas,
+                    num_peaks=num_peaks,
+                    shape=shape,
+                )
+                self.assertEqual(
+                    peaks.get_num_peaks(),
+                    num_peaks,
+                    msg=f"{shape=}, {num_peaks=}",
+                )
+
+            peaks = analyze_drt_peaks(time_constants, gammas, shape=shape)
+            self.assertEqual(peaks.get_num_peaks(), 1, msg=shape)
+
+        peaks = analyze_drt_peaks(
+            time_constants,
+            gammas,
+            num_peaks=2,
+            shape="gaussian",
+        )
+        positions = sorted(float(_.get_time_constant()) for _ in peaks.peaks)
+        self.assertAlmostEqual(log10(positions[0]), -2.0, delta=0.1)
+        self.assertAlmostEqual(log10(positions[1]), -1.55, delta=0.1)
+
     def test_analyze_drt_peaks_nonpositive_gammas(self):
         time_constants, gammas = self._method_results["tr-nnls"].get_drt_data()
         self.assertGreater(max(gammas), 0.0)

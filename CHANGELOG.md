@@ -18,6 +18,7 @@
   - Added `get_time_constant` and `get_height` methods to `DRTPeak`.
   - Added `--peak-shape` and `--global-optimization` CLI arguments.
 - Added `analyze_drt_peaks` function for analyzing the peaks of a DRT given its time constants and gamma values directly (e.g., DRTs that are not represented by a `DRTResult` instance).
+- Fixed a bug where specifying the number of peaks to analyze (`num_peaks`) could result in fewer peaks being analyzed when overlapping peaks did not produce distinct local maxima. Shoulders (and, if necessary, positions between the detected peaks) are now added so that exactly `num_peaks` peaks are analyzed.
 - Fixed a bug where analyzing peaks using skew normal distributions would fail when all gamma values are less than or equal to zero (e.g., the imaginary part of a BHT result). An empty set of peaks is now returned instead.
 
 
